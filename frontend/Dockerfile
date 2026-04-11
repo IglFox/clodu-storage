@@ -2,8 +2,8 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN pip install fastapi uvicorn
+RUN pip install streamlit networkx pyvis
 
 COPY . .
 
-ENTRYPOINT ["sh", "-c", "uvicorn routers.${ROUTER_NAME}:app --host 0.0.0.0 --port 8000"]
+ENTRYPOINT ["sh", "-c", "streamlit run services/main_page.py"]

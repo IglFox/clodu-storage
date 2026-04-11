@@ -21,16 +21,6 @@ services:
     volumes:
       - files-data:/data/files # общий диск для файлов
 
-  data-analysis:
-    build: ./frontend
-    container_name: data-analysis
-    ports:
-      - "8003:8000"
-    environment:
-      - ROUTER_NAME=main_data_analysis
-    depends_on:
-      - db
-
   db:
     image: postgres:16-alpine
     container_name: db
@@ -44,11 +34,8 @@ services:
       - db-data:/var/lib/postgresql/data
 
   main_page:
-    image: dockerfile-ui
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile-ui
-    container_name: streamlit_page
+    build: ./frontend
+    container_name: streamlit
     ports:
       - "8004:8501"
     depends_on:
