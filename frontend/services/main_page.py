@@ -1,6 +1,10 @@
 import streamlit as st
 import uuid
 from datetime import datetime
+import networkx as nx
+from pyvis.network import Network
+import tempfile
+import json
 
 # --- Инициализация состояния ---
 if "authenticated" not in st.session_state:
@@ -8,8 +12,9 @@ if "authenticated" not in st.session_state:
 if "current_user" not in st.session_state:
     st.session_state.current_user = None
 if "files" not in st.session_state:
-    # Хранилище файлов: список словарей {id, name, size, owner, uploaded_at}
     st.session_state.files = []
+if "show_graph" not in st.session_state:  # флаг для отображения графа
+    st.session_state.show_graph = False
 
 # --- Заглушка для пользователей ---
 USERS = {
@@ -18,7 +23,7 @@ USERS = {
 }
 
 
-# --- Функции-заглушки ---
+# --- Функции-заглушки (без изменений) ---
 def login_stub(username, password):
     if username in USERS and USERS[username]["password"] == password:
         st.session_state.authenticated = True
@@ -30,10 +35,10 @@ def login_stub(username, password):
 def logout_stub():
     st.session_state.authenticated = False
     st.session_state.current_user = None
+    st.session_state.show_graph = False
 
 
 def upload_file_stub(uploaded_file):
-    """Сохраняет метаданные файла в session_state (содержимое не храним)"""
     file_id = str(uuid.uuid4())
     st.session_state.files.append({
         "id": file_id,
@@ -52,8 +57,78 @@ def get_user_files_stub():
 
 
 def get_download_url_stub(file_id):
-    # Просто имитация ссылки (не рабочая)
     return f"/fake-download/{file_id}"
+
+
+# --- Функция для создания демо-графа (заглушка) ---
+def build_demo_graph():
+    """Создаёт пример графа заметок (как в Obsidian)"""
+    G = nx.Graph()
+    # Добавим несколько узлов и связей
+    edges = [
+        ("Проект Alpha", "Заметки по проекту"),
+        ("Проект Alpha", "Встречи"),
+        ("Заметки по проекту", "Идеи"),
+        ("Встречи", "План действий"),
+        ("Идеи", "Реализация"),
+        ("Реализация", "Деплой"),
+        ("Личные заметки", "Идеи"),
+    ]
+    G.add_edges_from(edges)
+    return G
+
+
+def render_graph_in_streamlit(G):
+    """Принимает граф NetworkX и отображает его через pyvis в Streamlit"""
+    net = Network(height="600px", width="100%", bgcolor="#1e1e1e", font_color="white")
+
+    # Настройки внешнего вида
+    options = {
+        "nodes": {
+            "shape": "dot",
+            "size": 20,
+            "font": {"size": 14, "face": "Arial"},
+            "borderWidth": 1,
+            "shadow": True,
+        },
+        "edges": {
+            "color": "#848484",
+            "width": 1.5,
+            "smooth": {"enabled": True, "type": "continuous"},
+        },
+        "physics": {
+            "enabled": True,
+            "solver": "forceAtlas2Based",
+            "forceAtlas2Based": {
+                "gravitationalConstant": -50,
+                "centralGravity": 0.01,
+                "springLength": 120,
+            },
+            "stabilization": {"iterations": 150},
+        },
+        "interaction": {
+            "hover": True,
+            "tooltipDelay": 100,
+            "zoomView": True,
+            "dragView": True,
+            "navigationButtons": True,
+        },
+    }
+    net.set_options(json.dumps(options))
+
+    # Добавляем узлы с размером, зависящим от степени
+    for node in G.nodes():
+        size = 15 + G.degree(node) * 3
+        net.add_node(node, label=node, size=size, title=node)
+    for edge in G.edges():
+        net.add_edge(edge[0], edge[1])
+
+    # Сохраняем во временный файл и отображаем
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp:
+        net.save_graph(tmp.name)
+        with open(tmp.name, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        st.components.v1.html(html_content, height=650)
 
 
 # --- UI ---
@@ -73,6 +148,18 @@ if not st.session_state.authenticated:
                 st.error("Неверное имя пользователя или пароль")
 else:
     st.sidebar.title(f"Привет, {st.session_state.current_user}")
+
+    # --- НОВЫЙ РАЗДЕЛ В БОКОВОЙ ПАНЕЛИ: ГРАФ ---
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("📊 Граф заметок")
+    if st.sidebar.button("🔍 Показать граф (заглушка)"):
+        st.session_state.show_graph = not st.session_state.show_graph  # переключатель
+        # если нужно всегда показывать при нажатии, можно st.session_state.show_graph = True
+        # но для удобства сделаем toggle
+    st.sidebar.caption(
+        "Нажмите, чтобы отобразить интерактивный граф связей между заметками (демо-пример)"
+    )
+
     if st.sidebar.button("Выйти"):
         logout_stub()
         st.rerun()
@@ -101,3 +188,13 @@ else:
                 )
     else:
         st.info("У вас пока нет файлов. Загрузите первый!")
+
+    # --- Отображение графа, если включено ---
+    if st.session_state.show_graph:
+        st.markdown("---")
+        st.subheader("📈 Граф связей заметок (демо-пример)")
+        demo_graph = build_demo_graph()
+        render_graph_in_streamlit(demo_graph)
+        st.caption(
+            "Это заглушка – граф построен на основе примера. В реальном приложении вы можете загружать свои .md файлы."
+        )
