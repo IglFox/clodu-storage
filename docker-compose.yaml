@@ -21,6 +21,26 @@ services:
     volumes:
       - files-data:/data/files # общий диск для файлов
 
+  encrypt:
+    build: ./backend
+    container_name: encrypt
+    ports:
+      - "8005:8000"
+    environment:
+      - ROUTER_NAME=main_encryption
+    depends_on:
+      - db
+    volumes:
+      - files-data:/data/files # общий диск для файлов
+
+  streamlit:
+    build: ./frontend
+    container_name: streamlit
+    ports:
+      - "8004:8501"
+    depends_on:
+      - db
+
   db:
     image: postgres:16-alpine
     container_name: db
@@ -32,14 +52,6 @@ services:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
-
-  main_page:
-    build: ./frontend
-    container_name: streamlit
-    ports:
-      - "8004:8501"
-    depends_on:
-      - db
 
 volumes:
   db-data:
