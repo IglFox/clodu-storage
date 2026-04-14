@@ -6,4 +6,4 @@ RUN pip install fastapi uvicorn
 
 COPY . .
 
-ENTRYPOINT ["sh", "-c", "uvicorn routers.${ROUTER_NAME}:app --host 0.0.0.0 --port 8000"]
+ENTRYPOINT ["sh", "-c", "uvicorn applications.${ROUTER_NAME}:app --host 0.0.0.0 --port 8000"]
