@@ -56,12 +56,3 @@ class GatewayClient:
         return self._request(
             "POST", f"/analysis/analyze", token=token, params={"file_id": file_id}
         )
-
-    # Encrypt
-    def encrypt(self, token: str, data: bytes) -> bytes:
-        files = {"data": data}
-        return self._request("POST", "/encrypt/encrypt", token=token, files=files)
-
-    def decrypt(self, token: str, data: bytes) -> bytes:
-        files = {"data": data}
-        return self._request("POST", "/encrypt/decrypt", token=token, files=files)
