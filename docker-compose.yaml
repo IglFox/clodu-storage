@@ -1,46 +1,74 @@
+version: "3.8"
+
 services:
   auth:
-    build: ./backend
-    container_name: auth
-    ports:
-      - "8001:8000"
+    build:
+      context: ./backend
+      args:
+        SERVICE_NAME: auth
     environment:
-      - ROUTER_NAME=main_auth
-    depends_on:
-      - db
+      PORT: 8001
+    networks:
+      - backend
 
   storage:
-    build: ./backend
-    container_name: storage
-    ports:
-      - "8002:8000"
+    build:
+      context: ./backend
+      args:
+        SERVICE_NAME: storage
     environment:
-      - ROUTER_NAME=main_storage
+      PORT: 8002
+    networks:
+      - backend
+
+  analysis:
+    build:
+      context: ./backend
+      args:
+        SERVICE_NAME: analysis
+    environment:
+      PORT: 8003
+    networks:
+      - backend
+
+  encrypt:
+    build:
+      context: ./backend
+      args:
+        SERVICE_NAME: encrypt
+    environment:
+      PORT: 8004
+    networks:
+      - backend
+
+  gateway:
+    build: ./gateway
+    ports:
+      - "8000:8000"
+    environment:
+      AUTH_URL: "http://auth:8001"
+      STORAGE_URL: "http://storage:8002"
+      ANALYSIS_URL: "http://analysis:8003"
+      ENCRYPT_URL: "http://encrypt:8004"
+    networks:
+      - backend
     depends_on:
-      - db
-    volumes:
-      - files-data:/data/files # общий диск для файлов
+      - auth
+      - storage
+      - analysis
+      - encrypt
 
-  db:
-    image: postgres:16-alpine
-    container_name: db
-    environment:
-      POSTGRES_USER: cloud_user
-      POSTGRES_PASSWORD: cloud_pass
-      POSTGRES_DB: cloud_db
-    ports:
-      - "5432:5432"
-    volumes:
-      - db-data:/var/lib/postgresql/data
-
-  main_page:
+  ui:
     build: ./frontend
-    container_name: streamlit
     ports:
-      - "8004:8501"
+      - "8501:8501"
+    networks:
+      - backend
+    environment:
+      GATEWAY_URL: "http://gateway:8000"
     depends_on:
-      - db
+      - gateway
 
-volumes:
-  db-data:
-  files-data:
+networks:
+  backend:
+    driver: bridge
