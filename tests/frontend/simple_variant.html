@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Clode Storage — простая версия</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    "Segoe UI",
+                    Roboto,
+                    sans-serif;
+                background: #0c0f14;
+                color: #e8eaf0;
+                padding: 1rem;
+            }
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1.5rem;
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+            h1 {
+                font-size: 1.6rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            button {
+                background: #1a1e28;
+                border: 1px solid #2a2f3c;
+                color: #e8eaf0;
+                padding: 0.4rem 0.8rem;
+                border-radius: 20px;
+                cursor: pointer;
+                font-size: 0.8rem;
+            }
+            button:hover {
+                background: #2a2f3c;
+            }
+            .stats {
+                display: flex;
+                gap: 1rem;
+                margin-bottom: 1.5rem;
+                flex-wrap: wrap;
+            }
+            .card {
+                background: #13161d;
+                border: 1px solid #242a36;
+                border-radius: 16px;
+                padding: 1rem;
+                min-width: 140px;
+            }
+            .card .label {
+                font-size: 0.7rem;
+                color: #8b93a7;
+                text-transform: uppercase;
+            }
+            .card .value {
+                font-size: 1.8rem;
+                font-weight: bold;
+            }
+            .toolbar {
+                display: flex;
+                gap: 0.8rem;
+                margin-bottom: 1.5rem;
+                flex-wrap: wrap;
+                align-items: center;
+            }
+            .breadcrumbs {
+                background: #13161d;
+                border-radius: 20px;
+                padding: 0.4rem 1rem;
+                font-size: 0.85rem;
+            }
+            .breadcrumbs span {
+                cursor: pointer;
+                color: #8b93a7;
+            }
+            .breadcrumbs span.active {
+                color: #3b82f6;
+            }
+            .search input {
+                background: #13161d;
+                border: 1px solid #242a36;
+                padding: 0.4rem 0.8rem;
+                border-radius: 20px;
+                color: white;
+                outline: none;
+            }
+            .file-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                gap: 0.8rem;
+            }
+            .file-card {
+                background: #13161d;
+                border: 1px solid #242a36;
+                border-radius: 12px;
+                padding: 0.8rem;
+                display: flex;
+                align-items: center;
+                gap: 0.8rem;
+                cursor: pointer;
+            }
+            .file-card:hover {
+                background: #1a1e28;
+            }
+            .file-icon {
+                font-size: 2rem;
+            }
+            .file-info {
+                flex: 1;
+            }
+            .file-name {
+                font-weight: 600;
+            }
+            .file-meta {
+                font-size: 0.7rem;
+                color: #8b93a7;
+            }
+            .delete-btn {
+                background: none;
+                border: none;
+                color: #ef4444;
+                cursor: pointer;
+                font-size: 1.2rem;
+            }
+            .empty {
+                text-align: center;
+                padding: 2rem;
+                color: #8b93a7;
+            }
+            footer {
+                margin-top: 2rem;
+                text-align: center;
+                font-size: 0.7rem;
+                color: #5c6478;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>📦 Clode Storage</h1>
+                <div>
+                    <button id="themeBtn">🌙 Тёмная</button>
+                </div>
+            </div>
+
+            <!-- Статистика -->
+            <div class="stats" id="stats"></div>
+
+            <!-- Панель управления -->
+            <div class="toolbar">
+                <div class="breadcrumbs" id="breadcrumbs"></div>
+                <div class="search">
+                    <input
+                        type="text"
+                        id="searchInput"
+                        placeholder="Поиск..."
+                    />
+                </div>
+                <button id="newFolderBtn">➕ Папка</button>
+                <button id="uploadBtn">📤 Загрузить</button>
+                <input
+                    type="file"
+                    id="fileInput"
+                    style="display: none"
+                    multiple
+                />
+            </div>
+
+            <!-- Список файлов/папок -->
+            <div id="fileList" class="file-grid"></div>
+
+            <footer>
+                Данные хранятся в памяти браузера. Для реального бэкенда
+                замените функции в коде.
+            </footer>
+        </div>
+
+        <script>
+            // ---------- ДАННЫЕ (как в примере health dashboard) ----------
+            let files = [
+                {
+                    id: "root",
+                    name: "root",
+                    type: "folder",
+                    parentId: null,
+                    size: 0,
+                    modified: Date.now(),
+                },
+                {
+                    id: "f1",
+                    name: "Документы",
+                    type: "folder",
+                    parentId: "root",
+                    size: 0,
+                    modified: Date.now() - 86400000,
+                },
+                {
+                    id: "f2",
+                    name: "Фото",
+                    type: "folder",
+                    parentId: "root",
+                    size: 0,
+                    modified: Date.now() - 172800000,
+                },
+                {
+                    id: "file1",
+                    name: "отчет.pdf",
+                    type: "file",
+                    parentId: "f1",
+                    size: 2.4 * 1024 * 1024,
+                    modified: Date.now() - 300000,
+                },
+                {
+                    id: "file2",
+                    name: "заметки.txt",
+                    type: "file",
+                    parentId: "f1",
+                    size: 120 * 1024,
+                    modified: Date.now() - 86400000,
+                },
+                {
+                    id: "img1",
+                    name: "фото.jpg",
+                    type: "file",
+                    parentId: "f2",
+                    size: 3.2 * 1024 * 1024,
+                    modified: Date.now() - 43200000,
+                },
+                {
+                    id: "rootfile",
+                    name: "hello.txt",
+                    type: "file",
+                    parentId: "root",
+                    size: 45 * 1024,
+                    modified: Date.now() - 600000,
+                },
+            ];
+            let currentFolderId = "root";
+            let searchQuery = "";
+
+            // Вспомогательные функции
+            function formatSize(bytes) {
+                if (bytes === 0) return "0 B";
+                const k = 1024;
+                const sizes = ["B", "KB", "MB", "GB"];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return (bytes / Math.pow(k, i)).toFixed(1) + " " + sizes[i];
+            }
+            function getFileIcon(name) {
+                const ext = name.split(".").pop().toLowerCase();
+                if (["jpg", "png", "gif", "jpeg"].includes(ext)) return "🖼️";
+                if (["mp4", "mkv"].includes(ext)) return "🎬";
+                if (["mp3", "wav"].includes(ext)) return "🎵";
+                if (["pdf", "doc", "txt", "md"].includes(ext)) return "📄";
+                if (["zip", "rar"].includes(ext)) return "🗜️";
+                return "📄";
+            }
+
+            // Получить текущие элементы (с учётом папки и поиска)
+            function getCurrentItems() {
+                let items = files.filter((f) => f.parentId === currentFolderId);
+                if (searchQuery) {
+                    const q = searchQuery.toLowerCase();
+                    items = items.filter((i) =>
+                        i.name.toLowerCase().includes(q),
+                    );
+                }
+                return items;
+            }
+
+            // Обновить статистику (KPI)
+            function updateStats() {
+                const totalFiles = files.filter(
+                    (f) => f.type === "file",
+                ).length;
+                const totalFolders = files.filter(
+                    (f) => f.type === "folder" && f.id !== "root",
+                ).length;
+                const usedBytes = files
+                    .filter((f) => f.type === "file")
+                    .reduce((sum, f) => sum + f.size, 0);
+                const usedGB = (usedBytes / 1024 ** 3).toFixed(1);
+                const percent = (usedBytes / 1024 ** 3 / 10) * 100;
+                document.getElementById("stats").innerHTML = `
+      <div class="card"><div class="label">Всего файлов</div><div class="value">${totalFiles}</div></div>
+      <div class="card"><div class="label">Папок</div><div class="value">${totalFolders}</div></div>
+      <div class="card"><div class="label">Использовано</div><div class="value">${usedGB} GB</div><div style="background:#242a36; height:4px; border-radius:4px; margin-top:6px;"><div style="width:${percent}%; background:#3b82f6; height:4px; border-radius:4px;"></div></div></div>
+    `;
+            }
+
+            // Отрисовать хлебные крошки
+            function renderBreadcrumbs() {
+                const crumbs = [];
+                let curId = currentFolderId;
+                const folderMap = new Map(
+                    files
+                        .filter((f) => f.type === "folder")
+                        .map((f) => [f.id, f]),
+                );
+                while (curId && curId !== "root") {
+                    const f = folderMap.get(curId);
+                    if (f) {
+                        crumbs.unshift({ id: f.id, name: f.name });
+                        curId = f.parentId;
+                    } else break;
+                }
+                let html = `<span data-id="root">📁 Мои файлы</span>`;
+                for (let i = 0; i < crumbs.length; i++) {
+                    html += ` / <span data-id="${crumbs[i].id}" ${i === crumbs.length - 1 ? 'class="active"' : ""}>${crumbs[i].name}</span>`;
+                }
+                document.getElementById("breadcrumbs").innerHTML = html;
+                // Вешаем обработчики
+                document.querySelectorAll("#breadcrumbs span").forEach((el) => {
+                    el.addEventListener("click", () => {
+                        currentFolderId = el.dataset.id;
+                        searchQuery = "";
+                        document.getElementById("searchInput").value = "";
+                        refreshUI();
+                    });
+                });
+            }
+
+            // Отрисовать список файлов/папок
+            function renderFileList() {
+                const items = getCurrentItems();
+                const container = document.getElementById("fileList");
+                if (items.length === 0) {
+                    container.innerHTML =
+                        '<div class="empty">📂 Папка пуста</div>';
+                    return;
+                }
+                container.innerHTML = items
+                    .map(
+                        (item) => `
+      <div class="file-card" data-id="${item.id}" data-type="${item.type}">
+        <div class="file-icon">${item.type === "folder" ? "📁" : getFileIcon(item.name)}</div>
+        <div class="file-info">
+          <div class="file-name">${escapeHtml(item.name)}</div>
+          <div class="file-meta">${item.type === "file" ? formatSize(item.size) : ""} • ${new Date(item.modified).toLocaleDateString()}</div>
+        </div>
+        <div class="file-actions">
+          <button class="delete-btn" data-id="${item.id}">🗑️</button>
+        </div>
+      </div>
+    `,
+                    )
+                    .join("");
+
+                // Открытие папки или файла
+                document.querySelectorAll(".file-card").forEach((card) => {
+                    card.addEventListener("dblclick", (e) => {
+                        if (e.target.classList.contains("delete-btn")) return;
+                        const id = card.dataset.id;
+                        const item = files.find((f) => f.id === id);
+                        if (item.type === "folder") {
+                            currentFolderId = id;
+                            searchQuery = "";
+                            document.getElementById("searchInput").value = "";
+                            refreshUI();
+                        } else {
+                            alert(
+                                `Файл: ${item.name}\nРазмер: ${formatSize(item.size)}`,
+                            );
+                        }
+                    });
+                });
+                // Удаление
+                document.querySelectorAll(".delete-btn").forEach((btn) => {
+                    btn.addEventListener("click", (e) => {
+                        e.stopPropagation();
+                        const id = btn.dataset.id;
+                        if (confirm("Удалить навсегда?")) deleteItem(id);
+                    });
+                });
+            }
+
+            // Удаление (рекурсивно для папок)
+            function deleteItem(id) {
+                const toDelete = [id];
+                function findChildren(parentId) {
+                    files.forEach((f) => {
+                        if (
+                            f.parentId === parentId &&
+                            !toDelete.includes(f.id)
+                        ) {
+                            toDelete.push(f.id);
+                            if (f.type === "folder") findChildren(f.id);
+                        }
+                    });
+                }
+                const item = files.find((f) => f.id === id);
+                if (item && item.type === "folder") findChildren(id);
+                files = files.filter((f) => !toDelete.includes(f.id));
+                if (toDelete.includes(currentFolderId))
+                    currentFolderId = "root";
+                refreshUI();
+            }
+
+            function createFolder(name) {
+                const newId = Date.now() + "-" + Math.random().toString(36);
+                files.push({
+                    id: newId,
+                    name: name,
+                    type: "folder",
+                    parentId: currentFolderId,
+                    size: 0,
+                    modified: Date.now(),
+                });
+                refreshUI();
+            }
+
+            function uploadFile(file) {
+                const newId = Date.now() + "-" + Math.random().toString(36);
+                files.push({
+                    id: newId,
+                    name: file.name,
+                    type: "file",
+                    parentId: currentFolderId,
+                    size: file.size,
+                    modified: Date.now(),
+                });
+                refreshUI();
+            }
+
+            function refreshUI() {
+                updateStats();
+                renderBreadcrumbs();
+                renderFileList();
+            }
+
+            function escapeHtml(str) {
+                return str.replace(/[&<>]/g, function (m) {
+                    if (m === "&") return "&amp;";
+                    if (m === "<") return "&lt;";
+                    if (m === ">") return "&gt;";
+                    return m;
+                });
+            }
+
+            // Тёмная/светлая тема (простая)
+            let isLight = false;
+            function applyTheme() {
+                if (isLight) {
+                    document.body.style.background = "#f4f5f7";
+                    document.body.style.color = "#111827";
+                    document
+                        .querySelectorAll(
+                            ".card, .breadcrumbs, .file-card, button, .search input",
+                        )
+                        .forEach((el) => {
+                            el.style.background = "#ffffff";
+                            el.style.borderColor = "#d8dbe3";
+                            el.style.color = "#111827";
+                        });
+                    document.getElementById("themeBtn").innerHTML =
+                        "☀️ Светлая";
+                } else {
+                    document.body.style.background = "#0c0f14";
+                    document.body.style.color = "#e8eaf0";
+                    document
+                        .querySelectorAll(
+                            ".card, .breadcrumbs, .file-card, button, .search input",
+                        )
+                        .forEach((el) => {
+                            el.style.background = "#13161d";
+                            el.style.borderColor = "#242a36";
+                            el.style.color = "#e8eaf0";
+                        });
+                    document.getElementById("themeBtn").innerHTML = "🌙 Тёмная";
+                }
+            }
+
+            // Инициализация событий
+            document
+                .getElementById("newFolderBtn")
+                .addEventListener("click", () => {
+                    const name = prompt("Название папки:");
+                    if (name) createFolder(name);
+                });
+            document
+                .getElementById("uploadBtn")
+                .addEventListener("click", () => {
+                    document.getElementById("fileInput").click();
+                });
+            document
+                .getElementById("fileInput")
+                .addEventListener("change", (e) => {
+                    Array.from(e.target.files).forEach((file) =>
+                        uploadFile(file),
+                    );
+                    e.target.value = "";
+                });
+            document
+                .getElementById("searchInput")
+                .addEventListener("input", (e) => {
+                    searchQuery = e.target.value;
+                    renderFileList(); // только перерисовываем список, без полного обновления
+                });
+            document
+                .getElementById("themeBtn")
+                .addEventListener("click", () => {
+                    isLight = !isLight;
+                    applyTheme();
+                });
+
+            // Старт
+            refreshUI();
+            applyTheme();
+        </script>
+    </body>
+</html>
