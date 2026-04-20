@@ -5,17 +5,16 @@
 ## Возможности
 
 - Регистрация и авторизация пользователей (auth‑сервис в backend).
-- Веб‑интерфейс для входа и работы с хранилищем (frontend на HTML/Vue/JS).[page:1]
-- API‑шлюз (`gateway`) для проксирования запросов к backend.[page:1]
-- Тестовый UI и e2e‑тесты для фронтенда (папка `tests/frontend`).[page:1]
+- Веб‑интерфейс для входа и работы с хранилищем (frontend на HTML/Vue/JS).
+- API‑шлюз (`gateway`) для проксирования запросов к backend.
 
 > Часть функционала находится в активной разработке и может меняться.
 
 ## Стек технологий
 
 - **Frontend:** HTML, Vue, JavaScript, CSS.[page:1]
-- **Backend:** Python (см. `pyproject.toml`).[page:1]
-- **Gateway:** Rust.[page:1]
+- **Backend:** Python, Rust (см. `pyproject.toml`).[page:1]
+- **Gateway:** Python.[page:1]
 - **Инфраструктура:** Docker, Docker Compose, Makefile.[page:1]
 
 ## Структура репозитория
@@ -35,7 +34,6 @@ test.html         # тестовая страница для фронта
 
 ## Быстрый старт (через Docker)
 
-Предполагается, что установлены Docker и Docker Compose.
 
 ```bash
 # Клонировать репозиторий
@@ -43,14 +41,22 @@ git clone https://github.com/IglFox/clodu-storage.git
 cd clodu-storage
 
 # Собрать и поднять все сервисы
-docker compose up --build
+make install
+make run
+```
+
+or
+
+```bash
+make install
+make build-auth
+make run-auth
 ```
 
 После запуска:
 
 - Backend и gateway будут подняты внутри Docker‑сети (см. `docker-compose.yaml`).[page:1]
-- Frontend будет доступен по адресу, указанному в `docker-compose.yaml` (например, `http://localhost:XXXX`).  
-  Уточни порт и при необходимости впиши его сюда.
+- Frontend будет доступен по адресу, указанному в `docker-compose.yaml` (`http://localhost:3000`).  
 
 Остановка сервисов:
 
@@ -58,43 +64,7 @@ docker compose up --build
 docker compose down
 ```
 
-## Запуск для разработки
 
-Актуальные команды следует смотреть в `Makefile`.[page:1]
-
-Примеры (если используешь такие цели — отредактируй под себя):
-
-```bash
-# Запуск backend в dev-режиме
-make backend-dev
-
-# Запуск frontend
-make frontend-dev
-
-# Запуск gateway
-make gateway-dev
-
-# Прогон тестов
-make test
-```
-
-## Тестирование
-
-Фронтенд‑тесты и экспериментальные сценарии лежат в `tests/frontend`.[page:1]
-
-Пример (замени на реальные команды):
-
-```bash
-# Запуск фронтенд-тестов
-make test-frontend
-```
-
-## Планы по развитию
-
-- Реализовать полноценное хранение и управление файлами.
-- Добавить загрузку/скачивание, папки, квоты.
-- Расширить покрытие тестами backend и gateway.
-- Настроить CI/CD (GitHub Actions) для линтинга, тестов и сборки образов.[page:1]
 
 ## Лицензия
 
