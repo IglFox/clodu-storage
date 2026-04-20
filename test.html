@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Clode Storage · Облачное хранилище</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap"
+            rel="stylesheet"
+        />
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        <style>
+            /* ===== Полностью копируем стили из health dashboard, адаптируя под хранилище ===== */
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            :root {
+                --bg: #0c0f14;
+                --bg-card: #13161d;
+                --bg-card-hover: #181c25;
+                --bg-surface: #1a1e28;
+                --border: #242a36;
+                --border-subtle: #1e2330;
+                --text: #e8eaf0;
+                --text-muted: #8b93a7;
+                --text-faint: #5c6478;
+                --accent: #3b82f6;
+                --accent-dim: rgba(59, 130, 246, 0.12);
+                --accent-green: #22c55e;
+                --accent-red: #ef4444;
+                --accent-amber: #f59e0b;
+                --chart-grid: rgba(36, 42, 54, 0.6);
+                --chart-tick: #5c6478;
+                --nav-bg: rgba(12, 15, 20, 0.85);
+                --radius: 12px;
+                --radius-sm: 8px;
+                --font-body: "Inter", system-ui, sans-serif;
+            }
+
+            .light {
+                --bg: #f4f5f7;
+                --bg-card: #ffffff;
+                --bg-card-hover: #f9fafb;
+                --bg-surface: #f0f1f4;
+                --border: #d8dbe3;
+                --border-subtle: #e4e7ed;
+                --text: #111827;
+                --text-muted: #4b5563;
+                --text-faint: #9ca3af;
+                --accent: #2563eb;
+                --chart-grid: rgba(216, 219, 227, 0.5);
+                --chart-tick: #9ca3af;
+                --nav-bg: rgba(244, 245, 247, 0.9);
+            }
+
+            body {
+                font-family: var(--font-body);
+                background: var(--bg);
+                color: var(--text);
+                transition:
+                    background 0.2s,
+                    color 0.2s;
+            }
+
+            .app {
+                max-width: 1280px;
+                margin: 0 auto;
+                padding: 0 1.25rem 2rem;
+            }
+
+            /* ===== Навигация ===== */
+            .nav {
+                position: sticky;
+                top: 0;
+                z-index: 100;
+                background: var(--nav-bg);
+                backdrop-filter: blur(12px);
+                border-bottom: 1px solid var(--border-subtle);
+                margin: 0 -1.25rem;
+                padding: 0 1.25rem;
+            }
+            .nav-inner {
+                display: flex;
+                align-items: center;
+                gap: 1.5rem;
+                height: 60px;
+            }
+            .nav-brand {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-weight: 700;
+                color: var(--text);
+            }
+            .nav-tabs {
+                display: flex;
+                gap: 0.25rem;
+                background: var(--bg-surface);
+                border-radius: 40px;
+                padding: 0.2rem;
+            }
+            .tab {
+                padding: 0.35rem 1rem;
+                border: none;
+                background: transparent;
+                color: var(--text-muted);
+                font-weight: 500;
+                border-radius: 32px;
+                cursor: pointer;
+            }
+            .tab.active {
+                background: var(--accent-dim);
+                color: var(--accent);
+            }
+            .nav-actions {
+                margin-left: auto;
+                display: flex;
+                gap: 0.75rem;
+            }
+            .theme-toggle,
+            .btn-icon {
+                display: flex;
+                align-items: center;
+                gap: 0.35rem;
+                padding: 0.3rem 0.7rem;
+                background: none;
+                border: 1px solid var(--border);
+                border-radius: 40px;
+                color: var(--text-muted);
+                font-size: 0.75rem;
+                cursor: pointer;
+                transition: 0.2s;
+            }
+            .theme-toggle:hover,
+            .btn-icon:hover {
+                border-color: var(--text-faint);
+                color: var(--text);
+            }
+
+            /* ===== Контент ===== */
+            .tab-content {
+                display: none;
+                animation: fade 0.2s;
+            }
+            .tab-content.active {
+                display: block;
+            }
+            @keyframes fade {
+                from {
+                    opacity: 0;
+                    transform: translateY(4px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .section {
+                margin-top: 2rem;
+            }
+            .section-title {
+                font-size: 1rem;
+                font-weight: 600;
+                margin-bottom: 1rem;
+            }
+
+            /* KPI карточки */
+            .kpi-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 0.75rem;
+                margin-bottom: 1.5rem;
+            }
+            .kpi-card {
+                background: var(--bg-card);
+                border: 1px solid var(--border-subtle);
+                border-radius: var(--radius);
+                padding: 1rem;
+            }
+            .kpi-label {
+                font-size: 0.7rem;
+                text-transform: uppercase;
+                color: var(--text-muted);
+            }
+            .kpi-value {
+                font-size: 1.8rem;
+                font-weight: 700;
+            }
+            .kpi-unit {
+                font-size: 0.8rem;
+                color: var(--text-faint);
+            }
+            .progress-bar {
+                margin-top: 0.5rem;
+                height: 5px;
+                background: var(--border);
+                border-radius: 10px;
+                overflow: hidden;
+            }
+            .progress-fill {
+                width: 0%;
+                height: 100%;
+                background: var(--accent);
+            }
+
+            /* Файловый менеджер */
+            .toolbar {
+                display: flex;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 1rem;
+                margin-bottom: 1.5rem;
+            }
+            .breadcrumbs {
+                background: var(--bg-surface);
+                padding: 0.4rem 1rem;
+                border-radius: 40px;
+                font-size: 0.85rem;
+            }
+            .crumb {
+                cursor: pointer;
+                color: var(--text-muted);
+            }
+            .crumb.active {
+                color: var(--accent);
+            }
+            .search-box input {
+                background: var(--bg-card);
+                border: 1px solid var(--border);
+                border-radius: 40px;
+                padding: 0.4rem 0.8rem;
+                color: var(--text);
+                outline: none;
+                width: 180px;
+            }
+            .file-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                gap: 0.75rem;
+            }
+            .file-card {
+                background: var(--bg-card);
+                border: 1px solid var(--border-subtle);
+                border-radius: var(--radius);
+                padding: 0.9rem;
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                cursor: pointer;
+                transition: 0.15s;
+            }
+            .file-card:hover {
+                background: var(--bg-card-hover);
+                transform: translateY(-2px);
+            }
+            .file-icon {
+                font-size: 1.8rem;
+            }
+            .file-info {
+                flex: 1;
+            }
+            .file-name {
+                font-weight: 600;
+                font-size: 0.85rem;
+            }
+            .file-meta {
+                font-size: 0.7rem;
+                color: var(--text-faint);
+            }
+            .file-actions button {
+                background: none;
+                border: none;
+                color: var(--text-muted);
+                cursor: pointer;
+                font-size: 1rem;
+            }
+            .empty-state {
+                text-align: center;
+                padding: 2rem;
+                color: var(--text-faint);
+            }
+
+            /* Аналитика */
+            .stats-row {
+                display: grid;
+                grid-template-columns: 1fr 1.2fr;
+                gap: 1rem;
+            }
+            .chart-card {
+                background: var(--bg-card);
+                border: 1px solid var(--border-subtle);
+                border-radius: var(--radius);
+                padding: 1rem;
+            }
+            .type-list {
+                margin-top: 1rem;
+            }
+            .type-item {
+                display: flex;
+                justify-content: space-between;
+                padding: 0.5rem 0;
+                border-bottom: 1px solid var(--border-subtle);
+            }
+
+            footer {
+                margin-top: 2.5rem;
+                padding-top: 1rem;
+                border-top: 1px solid var(--border-subtle);
+                font-size: 0.7rem;
+                color: var(--text-faint);
+                display: flex;
+                justify-content: space-between;
+            }
+
+            @media (max-width: 700px) {
+                .stats-row {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="app">
+            <div class="nav">
+                <div class="nav-inner">
+                    <div class="nav-brand">
+                        <svg
+                            width="24"
+                            height="24"
+                            viewBox="0 0 28 28"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.6"
+                        >
+                            <rect x="3" y="3" width="22" height="22" rx="5" />
+                            <path d="M8 12h12M8 16h8" stroke-linecap="round" />
+                            <circle
+                                cx="19"
+                                cy="16"
+                                r="1.5"
+                                fill="currentColor"
+                                stroke="none"
+                            />
+                        </svg>
+                        <span>Clode Storage</span>
+                    </div>
+                    <div class="nav-tabs">
+                        <button class="tab active" data-tab="files">
+                            Файлы
+                        </button>
+                        <button class="tab" data-tab="insights">
+                            Аналитика
+                        </button>
+                    </div>
+                    <div class="nav-actions">
+                        <button class="theme-toggle" id="themeToggle">
+                            🌙 Тёмная
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка Файлы -->
+            <div id="tab-files" class="tab-content active">
+                <!-- KPI -->
+                <div class="kpi-grid" id="kpiContainer"></div>
+
+                <div class="toolbar">
+                    <div class="breadcrumbs" id="breadcrumbs"></div>
+                    <div style="display: flex; gap: 0.5rem">
+                        <div class="search-box">
+                            <input
+                                type="text"
+                                id="searchInput"
+                                placeholder="Поиск..."
+                            />
+                        </div>
+                        <button class="btn-icon" id="newFolderBtn">
+                            ➕ Папка
+                        </button>
+                        <button class="btn-icon" id="uploadBtn">
+                            📤 Загрузить
+                        </button>
+                        <input
+                            type="file"
+                            id="fileInput"
+                            style="display: none"
+                            multiple
+                        />
+                    </div>
+                </div>
+                <div id="fileGrid" class="file-grid"></div>
+            </div>
+
+            <!-- Вкладка Аналитика -->
+            <div id="tab-insights" class="tab-content">
+                <div class="stats-row">
+                    <div class="chart-card">
+                        <h3 class="section-title">📊 Использование по типам</h3>
+                        <canvas
+                            id="typeChart"
+                            width="400"
+                            height="300"
+                            style="max-width: 100%"
+                        ></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3 class="section-title">💾 Детализация</h3>
+                        <div id="statsDetails"></div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="usageFill"></div>
+                        </div>
+                        <p
+                            id="spaceText"
+                            style="margin-top: 0.5rem; font-size: 0.75rem"
+                        ></p>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="section-title">📁 Крупные файлы (>50 МБ)</h3>
+                    <div id="largeFilesList"></div>
+                </div>
+            </div>
+
+            <footer>
+                <span>Clode Storage — демо-версия (данные в памяти)</span>
+                <span>🔒 Шифрование на клиенте (опционально)</span>
+            </footer>
+        </div>
+
+        <script>
+            // ========== ДАННЫЕ (аналог health dashboard, но для файлов) ==========
+            let files = [
+                {
+                    id: "root",
+                    name: "root",
+                    type: "folder",
+                    parentId: null,
+                    size: 0,
+                    modified: Date.now(),
+                },
+                {
+                    id: "f1",
+                    name: "Документы",
+                    type: "folder",
+                    parentId: "root",
+                    size: 0,
+                    modified: Date.now() - 86400000,
+                },
+                {
+                    id: "f2",
+                    name: "Фото",
+                    type: "folder",
+                    parentId: "root",
+                    size: 0,
+                    modified: Date.now() - 172800000,
+                },
+                {
+                    id: "file1",
+                    name: "отчет_2025.pdf",
+                    type: "file",
+                    parentId: "f1",
+                    size: 2.4 * 1024 * 1024,
+                    modified: Date.now() - 300000,
+                },
+                {
+                    id: "file2",
+                    name: "project_idea.md",
+                    type: "file",
+                    parentId: "f1",
+                    size: 120 * 1024,
+                    modified: Date.now() - 86400000,
+                },
+                {
+                    id: "img1",
+                    name: "sunset.jpg",
+                    type: "file",
+                    parentId: "f2",
+                    size: 3.2 * 1024 * 1024,
+                    modified: Date.now() - 43200000,
+                },
+                {
+                    id: "rootfile",
+                    name: "welcome.txt",
+                    type: "file",
+                    parentId: "root",
+                    size: 45 * 1024,
+                    modified: Date.now() - 600000,
+                },
+            ];
+            let currentFolderId = "root";
+            let searchQuery = "";
+            let chartInstance = null;
+
+            // Helper
+            function formatSize(bytes) {
+                if (bytes === 0) return "0 B";
+                const k = 1024;
+                const sizes = ["B", "KB", "MB", "GB"];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return (bytes / Math.pow(k, i)).toFixed(1) + " " + sizes[i];
+            }
+            function formatDate(ts) {
+                return new Date(ts).toLocaleDateString();
+            }
+            function getFileIcon(name) {
+                const ext = name.split(".").pop().toLowerCase();
+                if (["jpg", "png", "gif", "jpeg"].includes(ext)) return "🖼️";
+                if (["mp4", "mkv"].includes(ext)) return "🎬";
+                if (["mp3", "wav"].includes(ext)) return "🎵";
+                if (["pdf", "doc", "txt", "md"].includes(ext)) return "📄";
+                if (["zip", "rar"].includes(ext)) return "🗜️";
+                return "📄";
+            }
+
+            // Получение текущих элементов
+            function getCurrentItems() {
+                let items = files.filter((f) => f.parentId === currentFolderId);
+                if (searchQuery) {
+                    const q = searchQuery.toLowerCase();
+                    items = items.filter((i) =>
+                        i.name.toLowerCase().includes(q),
+                    );
+                }
+                return items;
+            }
+
+            // Статистика KPI
+            function updateKPI() {
+                const totalFiles = files.filter(
+                    (f) => f.type === "file",
+                ).length;
+                const totalFolders = files.filter(
+                    (f) => f.type === "folder" && f.id !== "root",
+                ).length;
+                const usedBytes = files
+                    .filter((f) => f.type === "file")
+                    .reduce((sum, f) => sum + f.size, 0);
+                const usedGB = (usedBytes / 1024 ** 3).toFixed(1);
+                const totalSpaceGB = 10;
+                const percent = (usedBytes / 1024 ** 3 / totalSpaceGB) * 100;
+
+                document.getElementById("kpiContainer").innerHTML = `
+      <div class="kpi-card"><div class="kpi-label">Всего файлов</div><div class="kpi-value">${totalFiles}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Папок</div><div class="kpi-value">${totalFolders}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Использовано</div><div class="kpi-value">${usedGB}<span class="kpi-unit">GB</span></div><div class="progress-bar"><div class="progress-fill" style="width:${percent}%"></div></div></div>
+    `;
+                document.getElementById("spaceText").innerHTML =
+                    `📦 ${usedGB} GB из ${totalSpaceGB} GB (${percent.toFixed(1)}%)`;
+                document.getElementById("usageFill").style.width =
+                    percent + "%";
+            }
+
+            // Рендер файлов/папок
+            function renderFileGrid() {
+                const items = getCurrentItems();
+                const container = document.getElementById("fileGrid");
+                if (items.length === 0) {
+                    container.innerHTML =
+                        '<div class="empty-state">📂 Папка пуста. Создайте папку или загрузите файл.</div>';
+                    return;
+                }
+                container.innerHTML = items
+                    .map(
+                        (item) => `
+      <div class="file-card" data-id="${item.id}" data-type="${item.type}">
+        <div class="file-icon">${item.type === "folder" ? "📁" : getFileIcon(item.name)}</div>
+        <div class="file-info">
+          <div class="file-name">${escapeHtml(item.name)}</div>
+          <div class="file-meta">${item.type === "file" ? formatSize(item.size) : ""} • ${formatDate(item.modified)}</div>
+        </div>
+        <div class="file-actions">
+          <button class="delete-btn" data-id="${item.id}">🗑️</button>
+        </div>
+      </div>
+    `,
+                    )
+                    .join("");
+
+                // Обработчики
+                document.querySelectorAll(".file-card").forEach((card) => {
+                    card.addEventListener("dblclick", (e) => {
+                        if (e.target.classList.contains("delete-btn")) return;
+                        const id = card.dataset.id;
+                        const item = files.find((f) => f.id === id);
+                        if (item.type === "folder") {
+                            currentFolderId = id;
+                            searchQuery = "";
+                            document.getElementById("searchInput").value = "";
+                            refreshUI();
+                        } else {
+                            alert(
+                                `Предпросмотр: ${item.name} (${formatSize(item.size)})`,
+                            );
+                        }
+                    });
+                });
+                document.querySelectorAll(".delete-btn").forEach((btn) => {
+                    btn.addEventListener("click", (e) => {
+                        e.stopPropagation();
+                        const id = btn.dataset.id;
+                        if (confirm("Удалить навсегда?")) deleteItem(id);
+                    });
+                });
+            }
+
+            function deleteItem(id) {
+                // рекурсивно удалить папку и всё внутри
+                const toDelete = [id];
+                const findChildren = (parentId) => {
+                    files.forEach((f) => {
+                        if (
+                            f.parentId === parentId &&
+                            !toDelete.includes(f.id)
+                        ) {
+                            toDelete.push(f.id);
+                            if (f.type === "folder") findChildren(f.id);
+                        }
+                    });
+                };
+                const item = files.find((f) => f.id === id);
+                if (item && item.type === "folder") findChildren(id);
+                files = files.filter((f) => !toDelete.includes(f.id));
+                if (toDelete.includes(currentFolderId))
+                    currentFolderId = "root";
+                refreshUI();
+                updateChart();
+            }
+
+            function createFolder(name) {
+                const newId = Date.now() + "-" + Math.random().toString(36);
+                files.push({
+                    id: newId,
+                    name: name,
+                    type: "folder",
+                    parentId: currentFolderId,
+                    size: 0,
+                    modified: Date.now(),
+                });
+                refreshUI();
+            }
+
+            function uploadFile(file) {
+                const newId = Date.now() + "-" + Math.random().toString(36);
+                files.push({
+                    id: newId,
+                    name: file.name,
+                    type: "file",
+                    parentId: currentFolderId,
+                    size: file.size,
+                    modified: Date.now(),
+                });
+                refreshUI();
+                updateChart();
+            }
+
+            function refreshUI() {
+                renderBreadcrumbs();
+                renderFileGrid();
+                updateKPI();
+                updateStatsDetails();
+                updateLargeFiles();
+            }
+
+            function renderBreadcrumbs() {
+                const crumbs = [];
+                let curId = currentFolderId;
+                const folderMap = new Map(
+                    files
+                        .filter((f) => f.type === "folder")
+                        .map((f) => [f.id, f]),
+                );
+                while (curId && curId !== "root") {
+                    const f = folderMap.get(curId);
+                    if (f) {
+                        crumbs.unshift({ id: f.id, name: f.name });
+                        curId = f.parentId;
+                    } else break;
+                }
+                const html =
+                    `<span class="crumb" data-id="root">📁 Мои файлы</span>` +
+                    crumbs
+                        .map(
+                            (c, idx) =>
+                                `<span> / </span><span class="crumb ${idx === crumbs.length - 1 ? "active" : ""}" data-id="${c.id}">${escapeHtml(c.name)}</span>`,
+                        )
+                        .join("");
+                document.getElementById("breadcrumbs").innerHTML = html;
+                document.querySelectorAll(".crumb").forEach((el) => {
+                    el.addEventListener("click", () => {
+                        const id = el.dataset.id;
+                        currentFolderId = id;
+                        searchQuery = "";
+                        document.getElementById("searchInput").value = "";
+                        refreshUI();
+                    });
+                });
+            }
+
+            // Аналитика (типы файлов)
+            function updateStatsDetails() {
+                let docs = 0,
+                    images = 0,
+                    media = 0,
+                    archives = 0,
+                    other = 0;
+                files.forEach((f) => {
+                    if (f.type !== "file") return;
+                    const ext = f.name.split(".").pop().toLowerCase();
+                    const sizeGb = f.size / 1024 ** 3;
+                    if (
+                        ["pdf", "doc", "docx", "txt", "md", "xlsx"].includes(
+                            ext,
+                        )
+                    )
+                        docs += sizeGb;
+                    else if (["jpg", "jpeg", "png", "gif"].includes(ext))
+                        images += sizeGb;
+                    else if (["mp4", "mkv", "mp3", "wav"].includes(ext))
+                        media += sizeGb;
+                    else if (["zip", "rar", "7z"].includes(ext))
+                        archives += sizeGb;
+                    else other += sizeGb;
+                });
+                const types = [
+                    { label: "Документы", icon: "📄", value: docs },
+                    { label: "Изображения", icon: "🖼️", value: images },
+                    { label: "Медиа", icon: "🎬", value: media },
+                    { label: "Архивы", icon: "🗜️", value: archives },
+                    { label: "Прочее", icon: "📁", value: other },
+                ];
+                document.getElementById("statsDetails").innerHTML = types
+                    .map(
+                        (t) => `
+      <div class="type-item"><span>${t.icon} ${t.label}</span><span>${t.value.toFixed(2)} GB</span></div>
+    `,
+                    )
+                    .join("");
+                updateChart(types);
+            }
+
+            function updateChart(types) {
+                const canvas = document.getElementById("typeChart");
+                if (!canvas) return;
+                if (chartInstance) chartInstance.destroy();
+                const ctx = canvas.getContext("2d");
+                const labels = types.map((t) => t.label);
+                const data = types.map((t) => t.value);
+                chartInstance = new Chart(ctx, {
+                    type: "doughnut",
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                data,
+                                backgroundColor: [
+                                    "#3b82f6",
+                                    "#22c55e",
+                                    "#a855f7",
+                                    "#f59e0b",
+                                    "#8b93a7",
+                                ],
+                                borderWidth: 0,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                position: "bottom",
+                                labels: {
+                                    color: getComputedStyle(
+                                        document.documentElement,
+                                    ).getPropertyValue("--text-muted"),
+                                },
+                            },
+                        },
+                    },
+                });
+            }
+
+            function updateLargeFiles() {
+                const large = files
+                    .filter(
+                        (f) => f.type === "file" && f.size > 50 * 1024 * 1024,
+                    )
+                    .sort((a, b) => b.size - a.size);
+                const container = document.getElementById("largeFilesList");
+                if (large.length === 0)
+                    container.innerHTML =
+                        '<div class="empty-state">Нет крупных файлов (>50 МБ)</div>';
+                else
+                    container.innerHTML = large
+                        .map(
+                            (f) =>
+                                `<div class="type-item"><span>${f.name}</span><span>${formatSize(f.size)}</span></div>`,
+                        )
+                        .join("");
+            }
+
+            function escapeHtml(str) {
+                return str.replace(/[&<>]/g, function (m) {
+                    if (m === "&") return "&amp;";
+                    if (m === "<") return "&lt;";
+                    if (m === ">") return "&gt;";
+                    return m;
+                });
+            }
+
+            // Тема
+            function initTheme() {
+                const isLight = localStorage.getItem("theme") === "light";
+                if (isLight) document.documentElement.classList.add("light");
+                document.getElementById("themeToggle").innerHTML = isLight
+                    ? "☀️ Светлая"
+                    : "🌙 Тёмная";
+                document
+                    .getElementById("themeToggle")
+                    .addEventListener("click", () => {
+                        document.documentElement.classList.toggle("light");
+                        const nowLight =
+                            document.documentElement.classList.contains(
+                                "light",
+                            );
+                        localStorage.setItem(
+                            "theme",
+                            nowLight ? "light" : "dark",
+                        );
+                        document.getElementById("themeToggle").innerHTML =
+                            nowLight ? "☀️ Светлая" : "🌙 Тёмная";
+                        updateStatsDetails(); // перерисовать график с новыми цветами
+                    });
+            }
+
+            // Переключение вкладок
+            function initTabs() {
+                document.querySelectorAll(".tab").forEach((tab) => {
+                    tab.addEventListener("click", () => {
+                        document
+                            .querySelectorAll(".tab")
+                            .forEach((t) => t.classList.remove("active"));
+                        tab.classList.add("active");
+                        document
+                            .querySelectorAll(".tab-content")
+                            .forEach((c) => c.classList.remove("active"));
+                        document
+                            .getElementById(`tab-${tab.dataset.tab}`)
+                            .classList.add("active");
+                        if (tab.dataset.tab === "insights")
+                            updateStatsDetails();
+                    });
+                });
+            }
+
+            // Обработчики кнопок
+            function initActions() {
+                document
+                    .getElementById("newFolderBtn")
+                    .addEventListener("click", () => {
+                        const name = prompt("Название папки:");
+                        if (name) createFolder(name);
+                    });
+                document
+                    .getElementById("uploadBtn")
+                    .addEventListener("click", () => {
+                        document.getElementById("fileInput").click();
+                    });
+                document
+                    .getElementById("fileInput")
+                    .addEventListener("change", (e) => {
+                        Array.from(e.target.files).forEach((file) =>
+                            uploadFile(file),
+                        );
+                        e.target.value = "";
+                    });
+                document
+                    .getElementById("searchInput")
+                    .addEventListener("input", (e) => {
+                        searchQuery = e.target.value;
+                        renderFileGrid();
+                    });
+            }
+
+            // Старт
+            function init() {
+                initTheme();
+                initTabs();
+                initActions();
+                refreshUI();
+                updateStatsDetails();
+            }
+            init();
+        </script>
+    </body>
+</html>

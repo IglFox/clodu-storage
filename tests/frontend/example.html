@@ -1,0 +1,301 @@
+// ========== ДАННЫЕ ==========
+let files = [
+  { id: 'root', name: 'root', type: 'folder', parentId: null, size: 0, modified: Date.now() },
+  { id: 'f1', name: 'Документы', type: 'folder', parentId: 'root', size: 0, modified: Date.now() - 86400000 },
+  { id: 'f2', name: 'Фото', type: 'folder', parentId: 'root', size: 0, modified: Date.now() - 172800000 },
+  { id: 'file1', name: 'отчет_2025.pdf', type: 'file', parentId: 'f1', size: 2.4 * 1024 * 1024, modified: Date.now() - 300000 },
+  { id: 'file2', name: 'project_idea.md', type: 'file', parentId: 'f1', size: 120 * 1024, modified: Date.now() - 86400000 },
+  { id: 'img1', name: 'sunset.jpg', type: 'file', parentId: 'f2', size: 3.2 * 1024 * 1024, modified: Date.now() - 43200000 },
+  { id: 'rootfile', name: 'welcome.txt', type: 'file', parentId: 'root', size: 45 * 1024, modified: Date.now() - 600000 },
+];
+let currentFolderId = 'root';
+let searchQuery = '';
+let chartInstance = null;
+
+// ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+function formatSize(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+}
+function formatDate(ts) {
+  return new Date(ts).toLocaleDateString();
+}
+function getFileIcon(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  if (['jpg','png','gif','jpeg'].includes(ext)) return '🖼️';
+  if (['mp4','mkv'].includes(ext)) return '🎬';
+  if (['mp3','wav'].includes(ext)) return '🎵';
+  if (['pdf','doc','txt','md'].includes(ext)) return '📄';
+  if (['zip','rar'].includes(ext)) return '🗜️';
+  return '📄';
+}
+function escapeHtml(str) {
+  return str.replace(/[&<>]/g, function(m) {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    return m;
+  });
+}
+
+// ========== ПОЛУЧЕНИЕ ТЕКУЩИХ ЭЛЕМЕНТОВ ==========
+function getCurrentItems() {
+  let items = files.filter(f => f.parentId === currentFolderId);
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    items = items.filter(i => i.name.toLowerCase().includes(q));
+  }
+  return items;
+}
+
+// ========== ОБНОВЛЕНИЕ KPI ==========
+function updateKPI() {
+  const totalFiles = files.filter(f => f.type === 'file').length;
+  const totalFolders = files.filter(f => f.type === 'folder' && f.id !== 'root').length;
+  const usedBytes = files.filter(f => f.type === 'file').reduce((sum, f) => sum + f.size, 0);
+  const usedGB = (usedBytes / (1024**3)).toFixed(1);
+  const totalSpaceGB = 10;
+  const percent = (usedBytes / (1024**3) / totalSpaceGB) * 100;
+
+  document.getElementById('kpiContainer').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">Всего файлов</div><div class="kpi-value">${totalFiles}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Папок</div><div class="kpi-value">${totalFolders}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Использовано</div><div class="kpi-value">${usedGB}<span class="kpi-unit">GB</span></div><div class="progress-bar"><div class="progress-fill" style="width:${percent}%"></div></div></div>
+  `;
+  document.getElementById('spaceText').innerHTML = `📦 ${usedGB} GB из ${totalSpaceGB} GB (${percent.toFixed(1)}%)`;
+  document.getElementById('usageFill').style.width = percent + '%';
+}
+
+// ========== РЕНДЕР ФАЙЛОВ И ПАПОК ==========
+function renderFileGrid() {
+  const items = getCurrentItems();
+  const container = document.getElementById('fileGrid');
+  if (items.length === 0) {
+    container.innerHTML = '<div class="empty-state">📂 Папка пуста. Создайте папку или загрузите файл.</div>';
+    return;
+  }
+  container.innerHTML = items.map(item => `
+    <div class="file-card" data-id="${item.id}" data-type="${item.type}">
+      <div class="file-icon">${item.type === 'folder' ? '📁' : getFileIcon(item.name)}</div>
+      <div class="file-info">
+        <div class="file-name">${escapeHtml(item.name)}</div>
+        <div class="file-meta">${item.type === 'file' ? formatSize(item.size) : ''} • ${formatDate(item.modified)}</div>
+      </div>
+      <div class="file-actions">
+        <button class="delete-btn" data-id="${item.id}">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+
+  // Обработчики для карточек
+  document.querySelectorAll('.file-card').forEach(card => {
+    card.addEventListener('dblclick', (e) => {
+      if (e.target.classList.contains('delete-btn')) return;
+      const id = card.dataset.id;
+      const item = files.find(f => f.id === id);
+      if (item.type === 'folder') {
+        currentFolderId = id;
+        searchQuery = '';
+        document.getElementById('searchInput').value = '';
+        refreshUI();
+      } else {
+        alert(`Предпросмотр: ${item.name} (${formatSize(item.size)})`);
+      }
+    });
+  });
+  document.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      if (confirm('Удалить навсегда?')) deleteItem(id);
+    });
+  });
+}
+
+// ========== УДАЛЕНИЕ (с рекурсией для папок) ==========
+function deleteItem(id) {
+  const toDelete = [id];
+  const findChildren = (parentId) => {
+    files.forEach(f => {
+      if (f.parentId === parentId && !toDelete.includes(f.id)) {
+        toDelete.push(f.id);
+        if (f.type === 'folder') findChildren(f.id);
+      }
+    });
+  };
+  const item = files.find(f => f.id === id);
+  if (item && item.type === 'folder') findChildren(id);
+  files = files.filter(f => !toDelete.includes(f.id));
+  if (toDelete.includes(currentFolderId)) currentFolderId = 'root';
+  refreshUI();
+  updateChart();
+}
+
+// ========== СОЗДАНИЕ ПАПКИ ==========
+function createFolder(name) {
+  const newId = Date.now() + '-' + Math.random().toString(36);
+  files.push({
+    id: newId,
+    name: name,
+    type: 'folder',
+    parentId: currentFolderId,
+    size: 0,
+    modified: Date.now()
+  });
+  refreshUI();
+}
+
+// ========== ЗАГРУЗКА ФАЙЛА ==========
+function uploadFile(file) {
+  const newId = Date.now() + '-' + Math.random().toString(36);
+  files.push({
+    id: newId,
+    name: file.name,
+    type: 'file',
+    parentId: currentFolderId,
+    size: file.size,
+    modified: Date.now()
+  });
+  refreshUI();
+  updateChart();
+}
+
+// ========== ХЛЕБНЫЕ КРОШКИ ==========
+function renderBreadcrumbs() {
+  const crumbs = [];
+  let curId = currentFolderId;
+  const folderMap = new Map(files.filter(f => f.type === 'folder').map(f => [f.id, f]));
+  while (curId && curId !== 'root') {
+    const f = folderMap.get(curId);
+    if (f) { crumbs.unshift({ id: f.id, name: f.name }); curId = f.parentId; }
+    else break;
+  }
+  const html = `<span class="crumb" data-id="root">📁 Мои файлы</span>` +
+    crumbs.map((c, idx) => `<span> / </span><span class="crumb ${idx === crumbs.length-1 ? 'active' : ''}" data-id="${c.id}">${escapeHtml(c.name)}</span>`).join('');
+  document.getElementById('breadcrumbs').innerHTML = html;
+  document.querySelectorAll('.crumb').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.dataset.id;
+      currentFolderId = id;
+      searchQuery = '';
+      document.getElementById('searchInput').value = '';
+      refreshUI();
+    });
+  });
+}
+
+// ========== СТАТИСТИКА ТИПОВ ==========
+function updateStatsDetails() {
+  let docs = 0, images = 0, media = 0, archives = 0, other = 0;
+  files.forEach(f => {
+    if (f.type !== 'file') return;
+    const ext = f.name.split('.').pop().toLowerCase();
+    const sizeGb = f.size / (1024**3);
+    if (['pdf','doc','docx','txt','md','xlsx'].includes(ext)) docs += sizeGb;
+    else if (['jpg','jpeg','png','gif'].includes(ext)) images += sizeGb;
+    else if (['mp4','mkv','mp3','wav'].includes(ext)) media += sizeGb;
+    else if (['zip','rar','7z'].includes(ext)) archives += sizeGb;
+    else other += sizeGb;
+  });
+  const types = [
+    { label: 'Документы', icon: '📄', value: docs },
+    { label: 'Изображения', icon: '🖼️', value: images },
+    { label: 'Медиа', icon: '🎬', value: media },
+    { label: 'Архивы', icon: '🗜️', value: archives },
+    { label: 'Прочее', icon: '📁', value: other }
+  ];
+  document.getElementById('statsDetails').innerHTML = types.map(t => `
+    <div class="type-item"><span>${t.icon} ${t.label}</span><span>${t.value.toFixed(2)} GB</span></div>
+  `).join('');
+  updateChart(types);
+}
+
+function updateChart(types) {
+  const canvas = document.getElementById('typeChart');
+  if (!canvas) return;
+  if (chartInstance) chartInstance.destroy();
+  const ctx = canvas.getContext('2d');
+  const labels = types.map(t => t.label);
+  const data = types.map(t => t.value);
+  const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
+  chartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#8b93a7'], borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { color: textColor || '#8b93a7' } } } }
+  });
+}
+
+function updateLargeFiles() {
+  const large = files.filter(f => f.type === 'file' && f.size > 50 * 1024 * 1024).sort((a,b) => b.size - a.size);
+  const container = document.getElementById('largeFilesList');
+  if (large.length === 0) container.innerHTML = '<div class="empty-state">Нет крупных файлов (>50 МБ)</div>';
+  else container.innerHTML = large.map(f => `<div class="type-item"><span>${f.name}</span><span>${formatSize(f.size)}</span></div>`).join('');
+}
+
+// ========== ОБЩЕЕ ОБНОВЛЕНИЕ UI ==========
+function refreshUI() {
+  renderBreadcrumbs();
+  renderFileGrid();
+  updateKPI();
+  updateStatsDetails();
+  updateLargeFiles();
+}
+
+// ========== ТЕМА ==========
+function initTheme() {
+  const isLight = localStorage.getItem('theme') === 'light';
+  if (isLight) document.documentElement.classList.add('light');
+  const toggleBtn = document.getElementById('themeToggle');
+  toggleBtn.innerHTML = isLight ? '☀️ Светлая' : '🌙 Тёмная';
+  toggleBtn.addEventListener('click', () => {
+    document.documentElement.classList.toggle('light');
+    const nowLight = document.documentElement.classList.contains('light');
+    localStorage.setItem('theme', nowLight ? 'light' : 'dark');
+    toggleBtn.innerHTML = nowLight ? '☀️ Светлая' : '🌙 Тёмная';
+    updateStatsDetails(); // перерисовать график с новыми цветами
+  });
+}
+
+// ========== ВКЛАДКИ ==========
+function initTabs() {
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+      if (tab.dataset.tab === 'insights') updateStatsDetails();
+    });
+  });
+}
+
+// ========== ДЕЙСТВИЯ ==========
+function initActions() {
+  document.getElementById('newFolderBtn').addEventListener('click', () => {
+    const name = prompt('Название папки:');
+    if (name) createFolder(name);
+  });
+  document.getElementById('uploadBtn').addEventListener('click', () => {
+    document.getElementById('fileInput').click();
+  });
+  document.getElementById('fileInput').addEventListener('change', (e) => {
+    Array.from(e.target.files).forEach(file => uploadFile(file));
+    e.target.value = '';
+  });
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    searchQuery = e.target.value;
+    renderFileGrid();
+  });
+}
+
+// ========== ЗАПУСК ==========
+function init() {
+  initTheme();
+  initTabs();
+  initActions();
+  refreshUI();
+}
+init();
