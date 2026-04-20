@@ -3,41 +3,11 @@ version: "3.8"
 services:
   auth:
     build:
-      context: ./backend
+      context: ./backend/auth
       args:
         SERVICE_NAME: auth
-    environment:
-      PORT: 8001
-    networks:
-      - backend
-
-  storage:
-    build:
-      context: ./backend
-      args:
-        SERVICE_NAME: storage
-    environment:
-      PORT: 8002
-    networks:
-      - backend
-
-  analysis:
-    build:
-      context: ./backend
-      args:
-        SERVICE_NAME: analysis
-    environment:
-      PORT: 8003
-    networks:
-      - backend
-
-  encrypt:
-    build:
-      context: ./backend
-      args:
-        SERVICE_NAME: encrypt
-    environment:
-      PORT: 8004
+    ports:
+      - "8081:8081"
     networks:
       - backend
 
@@ -46,7 +16,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      AUTH_URL: "http://auth:8001"
+      AUTH_URL: "http://auth:8081"
       STORAGE_URL: "http://storage:8002"
       ANALYSIS_URL: "http://analysis:8003"
       ENCRYPT_URL: "http://encrypt:8004"
@@ -54,18 +24,13 @@ services:
       - backend
     depends_on:
       - auth
-      - storage
-      - analysis
-      - encrypt
 
   ui:
     build: ./frontend
     ports:
-      - "8501:8501"
+      - "3000:3000"
     networks:
       - backend
-    environment:
-      GATEWAY_URL: "http://gateway:8000"
     depends_on:
       - gateway
 
