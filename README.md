@@ -1,6 +1,6 @@
 # clodu-storage
 
-Современный прототип облачного хранилища с веб‑интерфейсом, авторизацией и шлюзом, разбитый на несколько сервисов (`backend`, `frontend`, `gateway`).[page:1] Проект собирается и запускается с помощью `docker-compose` и `Makefile`.[page:1]
+Современный прототип облачного хранилища с веб‑интерфейсом, авторизацией и шлюзом, разбитый на несколько сервисов (`backend`, `frontend`, `gateway`). Проект собирается и запускается с помощью `docker-compose` и `Makefile`.
 
 ## Возможности
 
@@ -12,10 +12,10 @@
 
 ## Стек технологий
 
-- **Frontend:** HTML, Vue, JavaScript, CSS.[page:1]
-- **Backend:** Python, Rust (см. `pyproject.toml`).[page:1]
-- **Gateway:** Python.[page:1]
-- **Инфраструктура:** Docker, Docker Compose, Makefile.[page:1]
+- **Frontend:** HTML, Vue, JavaScript, CSS.
+- **Backend:** Python, Rust (см. `pyproject.toml`).
+- **Gateway:** Python.
+- **Инфраструктура:** Docker, Docker Compose, Makefile.
 
 ## Структура репозитория
 
@@ -55,7 +55,7 @@ make run-auth
 
 После запуска:
 
-- Backend и gateway будут подняты внутри Docker‑сети (см. `docker-compose.yaml`).[page:1]
+- Backend и gateway будут подняты внутри Docker‑сети (см. `docker-compose.yaml`).
 - Frontend будет доступен по адресу, указанному в `docker-compose.yaml` (`http://localhost:3000`).  
 
 Остановка сервисов:
@@ -68,4 +68,4 @@ docker compose down
 
 ## Лицензия
 
-Проект распространяется под лицензией MIT, текст лицензии см. в файле `LICENSE`.[page:1]
+Проект распространяется под лицензией MIT, текст лицензии см. в файле `LICENSE`.
