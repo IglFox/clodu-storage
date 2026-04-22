@@ -28,7 +28,7 @@ services:
   ui:
     build: ./frontend
     ports:
-      - "3000:3000"
+      - "5173:5173"
     networks:
       - backend
     depends_on:
