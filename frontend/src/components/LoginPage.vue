@@ -46,7 +46,7 @@ async function handleLogin() {
     // })
 
     successMessage.value = 'Вход выполнен успешно! Переводим вас в приложение...'
-    
+
     // Save login preference if "Remember me" is checked
     if (rememberMe.value) {
       localStorage.setItem('rememberedEmail', email.value)
@@ -78,7 +78,9 @@ function switchToRegister() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center p-4">
+  <div
+    class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center p-4"
+  >
     <!-- Background decorations -->
     <div class="fixed inset-0 pointer-events-none overflow-hidden">
       <div
@@ -94,15 +96,21 @@ function switchToRegister() {
         <!-- Header -->
         <div class="text-center mb-8">
           <div class="flex items-center justify-center gap-2 mb-4">
-            <div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-accent-600 rounded-lg flex items-center justify-center">
+            <div
+              class="w-10 h-10 bg-gradient-to-br from-primary-500 to-accent-600 rounded-lg flex items-center justify-center"
+            >
               <Cloud class="w-6 h-6 text-white" />
             </div>
-            <h1 class="text-2xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
+            <h1
+              class="text-2xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent"
+            >
               Nebula Cloud
             </h1>
           </div>
           <h2 class="text-xl font-bold mb-2">Добро пожаловать!</h2>
-          <p class="text-sm text-slate-600 dark:text-slate-400">Введите ваши учётные данные для входа</p>
+          <p class="text-sm text-slate-600 dark:text-slate-400">
+            Введите ваши учётные данные для входа
+          </p>
         </div>
 
         <!-- Success Message -->
@@ -126,14 +134,16 @@ function switchToRegister() {
         <form @submit.prevent="handleLogin" class="space-y-4">
           <!-- Email -->
           <div>
-            <label class="block text-sm font-medium mb-2">Электронная почта</label>
+            <label class="block text-sm font-medium mb-2 text-blue-600 dark:text-blue-400"
+              >Электронная почта
+            </label>
             <div class="relative">
               <Mail class="absolute left-3 top-3 w-5 h-5 text-slate-400 pointer-events-none" />
               <input
                 v-model="email"
                 type="email"
                 placeholder="your@email.com"
-                class="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                class="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-700 dark:text-gray-300 transition-all"
                 required
               />
             </div>
@@ -142,7 +152,7 @@ function switchToRegister() {
           <!-- Password -->
           <div>
             <div class="flex items-center justify-between mb-2">
-              <label class="text-sm font-medium">Пароль</label>
+              <label class="text-sm font-medium text-blue-600 dark:text-blue-400">Пароль</label>
               <button
                 type="button"
                 @click="handleForgotPassword"
@@ -157,7 +167,7 @@ function switchToRegister() {
                 v-model="password"
                 :type="showPassword ? 'text' : 'password'"
                 placeholder="••••••••"
-                class="w-full pl-10 pr-10 py-2.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                class="w-full pl-10 pr-10 py-2.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-700 dark:text-gray-300 transition-all"
                 required
               />
               <button
@@ -179,7 +189,9 @@ function switchToRegister() {
               id="remember"
               class="w-4 h-4 border-slate-300 rounded cursor-pointer accent-primary-600"
             />
-            <label for="remember" class="text-sm text-slate-600 dark:text-slate-400"> Запомнить меня </label>
+            <label for="remember" class="text-sm text-slate-600 dark:text-slate-400">
+              Запомнить меня
+            </label>
           </div>
 
           <!-- Submit Button -->
@@ -205,10 +217,17 @@ function switchToRegister() {
         </div>
 
         <!-- Demo Info -->
-        <div class="mt-6 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg text-xs text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+        <div
+          class="mt-6 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg text-xs text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+        >
           <p class="font-medium mb-1">Демо учётные данные:</p>
-          <p>Email: <code class="bg-slate-100 dark:bg-slate-900 px-1 rounded">demo@nebulacloud.com</code></p>
-          <p>Password: <code class="bg-slate-100 dark:bg-slate-900 px-1 rounded">Demo@12345</code></p>
+          <p>
+            Email:
+            <code class="bg-slate-100 dark:bg-slate-900 px-1 rounded">demo@nebulacloud.com</code>
+          </p>
+          <p>
+            Password: <code class="bg-slate-100 dark:bg-slate-900 px-1 rounded">Demo@12345</code>
+          </p>
         </div>
       </div>
     </div>
