@@ -6,8 +6,6 @@ services:
       context: ./backend/auth
       args:
         SERVICE_NAME: auth
-    ports:
-      - "8081:8081"
     networks:
       - backend
 
@@ -24,16 +22,61 @@ services:
       - backend
     depends_on:
       - auth
+      - storage
 
   ui:
     build: ./frontend
     ports:
-      - "5173:3000"
+      - "5173:5173"
     networks:
       - backend
     depends_on:
       - gateway
 
+  storage:
+    build: ./backend/storage
+    ports:
+      - "8002:8002"
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://user:password@db:5432/filestorage"
+      ELASTICSEARCH_URL: "http://elasticsearch:9200"
+      STORAGE_DIR: "/data/files"
+    volumes:
+      - file_storage:/data/files
+    networks:
+      - backend
+    depends_on:
+      - db
+      - elasticsearch
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: filestorage
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    networks:
+      - backend
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+
 networks:
   backend:
     driver: bridge
+
+volumes:
+  file_storage:
+  pgdata:
+  esdata:

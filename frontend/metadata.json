@@ -1,0 +1,6 @@
+{
+  "name": "CloudVault UI",
+  "description": "Secure cloud storage microservice interface with advanced security and configuration controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

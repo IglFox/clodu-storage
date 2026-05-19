@@ -8,7 +8,7 @@ build-frontend:
 	docker build -t frontend-service ./frontend
 
 run-frontend:
-    docker run --rm -p 3000:3000 frontend-service
+    docker run --rm -p 5173:5173 frontend-service
 
 run: # Сервис на localhost:3000
 	docker-compose up --build
