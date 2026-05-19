@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Clodu.API.Models;
 
 namespace Clodu.API.Models;
 
@@ -13,5 +14,5 @@ public class FileTag
     public Tag Tag { get; set; } = null!;
     
     public int FileId { get; set; }
-    public File File { get; set; } = null!;
+    public FileData File { get; set; } = null!;
 }

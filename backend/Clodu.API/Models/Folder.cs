@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Clodu.API.Models;
 
 namespace Clodu.API.Models;
 
@@ -38,7 +39,7 @@ public class Folder
         ChildFolders.Add(new FolderFolder { ParentId = this.Id, ChildId = child.Id });
     }
     
-    public void AddFile(File file, int? spaceId = null)
+    public void AddFile(FileData file, int? spaceId = null)
     {
         FolderFiles.Add(new FolderFile { FolderId = this.Id, FileId = file.Id, SpaceId = spaceId });
     }

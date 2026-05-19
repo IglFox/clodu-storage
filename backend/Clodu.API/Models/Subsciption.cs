@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
 
 namespace Clodu.API.Models;
 
@@ -11,21 +12,27 @@ public class Subscription
     
     [Required]
     [MaxLength(100)]
-    public string Name { get; set; } = string.Empty;  // "Free", "Pro", "Business"
+    public string Name { get; set; } = string.Empty;
     
-    public int Price { get; set; }  // Цена в рублях (копейках если умножить на 100)
+    public int Price { get; set; }
     
-    // Лимиты
-    public long MaxStorageBytes { get; set; } = 5L * 1024 * 1024 * 1024;  // 5 GB
+    public long MaxStorageBytes { get; set; } = 5L * 1024 * 1024 * 1024;
     public int MaxFileSizeMB { get; set; } = 100;
     public int MaxTeamMembers { get; set; } = 1;
     
-    // Гибкие фичи (JSON)
+    // Для БД — храним как JSON строку
     [Column(TypeName = "jsonb")]
-    public Dictionary<string, object> Features { get; set; } = new();
+    public string Features { get; set; } = "{}";
+    
+    // Для удобной работы в коде (не хранится в БД)
+    [NotMapped]
+    public Dictionary<string, object> FeaturesDict
+    {
+        get => JsonSerializer.Deserialize<Dictionary<string, object>>(Features) ?? new();
+        set => Features = JsonSerializer.Serialize(value);
+    }
     
     public bool IsActive { get; set; } = true;
     
-    // Навигация
     public ICollection<UserSubscriptionHistory> UserHistory { get; set; } = new List<UserSubscriptionHistory>();
 }

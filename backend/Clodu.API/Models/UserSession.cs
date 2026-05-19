@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace Clodu.API.Models;
 
@@ -12,6 +13,7 @@ public class UserSession
     public int UserId { get; set; }
     public User User { get; set; } = null!;
     
+    [JsonIgnore]
     public string JwtToken { get; set; } = string.Empty;
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
