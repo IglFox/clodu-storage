@@ -1,85 +1,166 @@
 <script setup>
-import { ref } from 'vue';
-import { HardDrive, Mail, Lock, ChevronRight, Shield, Globe } from 'lucide-vue-next';
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { CryptoService } from '../utils/crypto';
 
-const emit = defineEmits(['login']);
-const loginForm = ref({ email: '', password: '' });
+const router = useRouter();
+const step = ref('login'); // 'login', 'register'
+const authForm = ref({ email: '', password: '' });
+const errorMsg = ref('');
 
-const handleLogin = () => {
-  if (loginForm.value.email && loginForm.value.password) {
-    emit('login', { ...loginForm.value });
+const showError = (msg) => {
+  errorMsg.value = msg;
+  setTimeout(() => {
+    errorMsg.value = '';
+  }, 4000);
+};
+
+onMounted(async () => {
+  const currentUserStr = localStorage.getItem('currentUser');
+  if (!currentUserStr) {
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('masterKey');
+    sessionStorage.removeItem('isVaultUnlocked');
+    step.value = 'register';
+    return;
+  }
+
+  const currentUser = JSON.parse(currentUserStr);
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  
+  // Clean up any stale masterKey in localStorage and sync with this user's IndexedDB
+  const idbKey = await CryptoService.getKey('master_key_' + currentUser.email);
+  if (idbKey) {
+    localStorage.setItem('masterKey', idbKey.value);
+  } else {
+    localStorage.removeItem('masterKey');
+  }
+
+  const hasMasterKey = !!localStorage.getItem('masterKey');
+  const isVaultUnlocked = sessionStorage.getItem('isVaultUnlocked') === 'true';
+
+  if (isLoggedIn) {
+    if (hasMasterKey && !isVaultUnlocked) {
+      step.value = 'vault_unlock';
+    } else {
+      router.push('/dashboard');
+    }
+  } else {
+    step.value = 'login';
+  }
+});
+
+const handleAuth = async () => {
+  if (step.value === 'register') {
+    if (!authForm.value.email.includes('@')) {
+      showError('Please enter a valid email address.');
+      return;
+    }
+    if (authForm.value.password.length < 6) {
+      showError('Password must be at least 6 characters long.');
+      return;
+    }
+    
+    // Mock Registration
+    // Fresh Registration: clear any old vault data for this browser
+    localStorage.removeItem('masterKey');
+    sessionStorage.removeItem('isVaultUnlocked');
+    
+    localStorage.setItem('currentUser', JSON.stringify({ email: authForm.value.email, password: authForm.value.password }));
+    localStorage.setItem('isLoggedIn', 'true');
+    router.push('/dashboard');
+  } else {
+    const stored = localStorage.getItem('currentUser');
+    if (!stored) {
+      showError('No account found. Please register first.');
+      step.value = 'register';
+      return;
+    }
+    
+    const user = JSON.parse(stored);
+    if (user.email === authForm.value.email && user.password === authForm.value.password) {
+      localStorage.setItem('isLoggedIn', 'true');
+      
+      // If user has a master key inside secure enclave, load and request to unlock
+      const idbKey = await CryptoService.getKey('master_key_' + user.email);
+      if (idbKey) {
+        localStorage.setItem('masterKey', idbKey.value);
+        step.value = 'vault_unlock';
+      } else {
+        localStorage.removeItem('masterKey');
+        router.push('/dashboard');
+      }
+    } else {
+      showError('Invalid email or password.');
+    }
+  }
+};
+
+const masterKey = ref('');
+
+const unlockVault = () => {
+  const storedKey = localStorage.getItem('masterKey');
+  if (masterKey.value === storedKey) {
+    sessionStorage.setItem('isVaultUnlocked', 'true');
+    router.push('/dashboard');
+  } else {
+    showError('Access Denied: Invalid Master Key.');
   }
 };
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center p-6 bg-[#FDFCFB]">
-    <div class="max-w-md w-full bg-white border border-[#E5E1DD] rounded-3xl p-10 shadow-xl shadow-black/5 animate-in fade-in slide-in-from-bottom-8 duration-700">
-      <div class="text-center mb-10">
-        <div class="w-16 h-16 bg-black rounded-2xl flex items-center justify-center mx-auto mb-6 rotate-3">
-          <HardDrive class="text-white w-8 h-8" />
-        </div>
-        <h1 class="text-3xl font-bold tracking-tight italic serif mb-2">CloudVault</h1>
-        <p class="text-[#666] text-sm">Secure enterprise storage microservice</p>
-      </div>
-
-      <form @submit.prevent="handleLogin" class="space-y-6">
-        <div class="space-y-2">
-          <label class="text-xs font-bold uppercase tracking-wider text-[#999] ml-1">Email Intelligence Access</label>
-          <div class="relative">
-            <Mail class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999]" />
-            <input 
-              v-model="loginForm.email"
-              type="email" 
-              placeholder="administrator@cloudvault.io"
-              class="w-full pl-12 pr-4 py-4 bg-[#F9F8F6] border border-[#E5E1DD] rounded-2xl text-sm focus:outline-none focus:border-black focus:bg-white transition-all"
-              required
-            />
-          </div>
-        </div>
-
-        <div class="space-y-2">
-          <label class="text-xs font-bold uppercase tracking-wider text-[#999] ml-1">Vault Key (Password)</label>
-          <div class="relative">
-            <Lock class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999]" />
-            <input 
-              v-model="loginForm.password"
-              type="password" 
-              placeholder="••••••••••••"
-              class="w-full pl-12 pr-4 py-4 bg-[#F9F8F6] border border-[#E5E1DD] rounded-2xl text-sm focus:outline-none focus:border-black focus:bg-white transition-all"
-              required
-            />
-          </div>
-        </div>
-
-        <div class="flex items-center justify-between py-2 text-xs font-medium">
-          <label class="flex items-center space-x-2 cursor-pointer">
-            <input type="checkbox" class="w-4 h-4 rounded border-[#E5E1DD] text-black focus:ring-0" />
-            <span class="text-[#666]">Trust this explorer</span>
-          </label>
-          <a href="#" class="text-black underline underline-offset-4 hover:no-underline">Lost Key?</a>
-        </div>
-
-        <button 
-          type="submit"
-          class="w-full py-4 bg-black text-white rounded-2xl font-bold text-sm shadow-lg shadow-black/20 hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center space-x-2"
-        >
-          <span>Decrypt & Access</span>
-          <ChevronRight class="w-4 h-4" />
-        </button>
-      </form>
-
-      <div class="mt-10 pt-8 border-t border-[#F2F0ED] flex items-center justify-center space-x-6">
-        <div class="flex items-center space-x-2 text-[10px] text-[#999] uppercase font-bold tracking-widest">
-          <Shield class="w-3 h-3" />
-          <span>Encrypted</span>
-        </div>
-        <div class="w-1 h-1 rounded-full bg-[#E5E1DD]"></div>
-        <div class="flex items-center space-x-2 text-[10px] text-[#999] uppercase font-bold tracking-widest">
-          <Globe class="w-3 h-3" />
-          <span>Nodes: 24</span>
-        </div>
-      </div>
+  <div>
+    
+    <!-- ERROR POPUP -->
+    <div v-if="errorMsg" style="border: 1px solid red; color: red; padding: 10px; margin-bottom: 20px;">
+      {{ errorMsg }}
     </div>
+
+    <header>
+      <h1>CloudVault</h1>
+      <p>Secure Intelligence Node</p>
+    </header>
+
+    <main>
+      <div v-if="step === 'login' || step === 'register'">
+        <h3>{{ step === 'login' ? 'Welcome Back' : 'Create Account' }}</h3>
+        <br />
+        <form @submit.prevent="handleAuth">
+          <div>
+            <label>EMAIL ADDRESS</label><br />
+            <input type="email" v-model="authForm.email" required />
+          </div>
+          <br />
+          <div>
+            <label>PASSWORD</label><br />
+            <input type="password" v-model="authForm.password" required />
+          </div>
+          <br />
+          <button type="submit">
+            {{ step === 'login' ? 'Sign In' : 'Register' }}
+          </button>
+        </form>
+        <p>
+          <a href="#" @click.prevent="step = step === 'login' ? 'register' : 'login'">
+            {{ step === 'login' ? "Don't have an account? Register" : "Already have an account? Login" }}
+          </a>
+        </p>
+      </div>
+
+      <!-- PHASE 2: VAULT UNLOCK (only if Master Key exists) -->
+      <div v-if="step === 'vault_unlock'">
+        <h3>Unlock Vault</h3>
+        <p>Your vault is encrypted. Enter Master Key to proceed.</p>
+        <form @submit.prevent="unlockVault">
+          <div>
+            <label>MASTER KEY</label><br />
+            <input type="password" v-model="masterKey" required />
+          </div>
+          <br />
+          <button type="submit">Unlock & Enter</button>
+        </form>
+      </div>
+    </main>
   </div>
 </template>

@@ -1,138 +1,133 @@
 <script setup>
-import { Camera, Mail, ShieldCheck, LogOut } from "lucide-vue-next";
+import { ref, onMounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { CryptoService } from '../utils/crypto';
 
-defineProps({
-    user: Object,
+const router = useRouter();
+const user = ref({ email: 'Unknown', role: 'Vault User' });
+const masterKey = ref('');
+const showSetup = ref(false);
+const hasMasterKeyStatus = ref(!!localStorage.getItem('masterKey'));
+const successMsg = ref('');
+
+const hasMasterKey = computed(() => hasMasterKeyStatus.value);
+
+onMounted(async () => {
+  const storedUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+  if (storedUser.email) {
+    user.value = { 
+      email: storedUser.email,
+      initials: storedUser.email.substring(0, 2).toUpperCase(),
+      role: 'Administrator' 
+    };
+
+    // Double check persistent storage for key status (scoped by user email)
+    const idbKey = await CryptoService.getKey('master_key_' + storedUser.email);
+    if (idbKey) {
+      localStorage.setItem('masterKey', idbKey.value);
+      hasMasterKeyStatus.value = true;
+    } else {
+      localStorage.removeItem('masterKey');
+      hasMasterKeyStatus.value = false;
+    }
+  } else {
+    hasMasterKeyStatus.value = false;
+  }
 });
 
-const emit = defineEmits(["logout", "update"]);
+const generateKey = () => {
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
+  let retVal = "";
+  for (let i = 0; i < 32; ++i) {
+    retVal += charset.charAt(Math.floor(Math.random() * charset.length));
+  }
+  masterKey.value = retVal;
+};
+
+const saveKey = async () => {
+  if (masterKey.value.length < 8) {
+    alert('Key too short');
+    return;
+  }
+  
+  localStorage.setItem('masterKey', masterKey.value);
+  await CryptoService.saveKey('master_key_' + user.value.email, { 
+    type: 'master', 
+    value: masterKey.value,
+    timestamp: Date.now() 
+  });
+
+  sessionStorage.setItem('isVaultUnlocked', 'true');
+  hasMasterKeyStatus.value = true;
+  showSetup.value = false;
+  successMsg.value = 'Vault Key Synchronized to Secure Storage';
+  setTimeout(() => { successMsg.value = ''; }, 3000);
+};
+
+const downloadKey = () => {
+  const element = document.createElement("a");
+  const file = new Blob([`CLOUDVAULT MASTER KEY:\n\n${masterKey.value}`], {type: 'text/plain'});
+  element.href = URL.createObjectURL(file);
+  element.download = "vault_master_key.txt";
+  document.body.appendChild(element);
+  element.click();
+};
+
+const logout = () => {
+  localStorage.removeItem('isLoggedIn');
+  router.push('/login');
+};
 </script>
 
 <template>
-    <div class="animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div class="mb-8">
-            <h2 class="text-2xl font-bold">User Profile</h2>
-            <p class="text-[#666] mt-1">
-                Manage your personal information and account preferences.
-            </p>
+  <div>
+    <nav>
+      <button @click="$router.push('/')">← Back</button>
+      <h2>User Profile</h2>
+    </nav>
+    <hr />
+
+    <main>
+      <div v-if="successMsg" style="background: #e6ffed; color: #22863a; padding: 10px; border: 1px solid #34d058; margin-bottom: 20px; text-align: center;">
+        {{ successMsg }}
+      </div>
+
+      <div style="border: 1px solid #ccc; padding: 20px; margin-bottom: 20px;">
+        <div style="font-size: 2rem; background: #eee; width: 60px; height: 60px; line-height: 60px; text-align: center; border-radius: 50%; margin-bottom: 10px;">
+          {{ user.initials || '??' }}
         </div>
-    </div>
-    <div class="grid grid-cols-3 gap-8">
-        <div class="col-span-1 space-y-6">
-            <div
-                class="bg-white border border-[#E5E1DD] rounded-2xl p-8 text-center shadow-sm"
-            >
-                <div class="relative w-32 h-32 mx-auto mb-6">
-                    <div
-                        class="w-full h-full rounded-2xl bg-[#F2F0ED] flex items-center justify-center text-4xl font-bold italic serif"
-                    >
-                        {{
-                            user.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")
-                        }}
-                    </div>
-                    <button
-                        class="absolute -bottom-2 -right-2 w-10 h-10 bg-black text-white rounded-xl flex items-center justify-center shadow-lg border-4 border-white hover:scale-105 transition-transform"
-                    >
-                        <Camera class="w-4 h-4" />
-                    </button>
-                </div>
-                <h3 class="text-xl font-bold">{{ user.name }}</h3>
-                <p class="text-sm text-[#999] mb-6">{{ user.role }}</p>
+        <h3>{{ user.email }}</h3>
+        <p>{{ user.role }}</p>
+      </div>
 
-                <div class="pt-6 border-t border-[#F2F0ED] space-y-4 text-left">
-                    <div class="flex items-center space-x-3 text-sm">
-                        <Mail class="w-4 h-4 text-[#999]" />
-                        <span class="text-[#666]">{{ user.email }}</span>
-                    </div>
-                    <div class="flex items-center space-x-3 text-sm">
-                        <ShieldCheck class="w-4 h-4 text-[#999]" />
-                        <span class="text-green-600 font-medium"
-                            >Verified Account</span
-                        >
-                    </div>
-                </div>
-
-                <button
-                    @click="emit('logout')"
-                    class="w-full mt-8 py-3 bg-[#FFF0F0] text-[#FF4444] rounded-xl text-sm font-bold flex items-center justify-center space-x-2 hover:bg-[#FFE5E5] transition-colors"
-                >
-                    <LogOut class="w-4 h-4" />
-                    <span>Sign Out</span>
-                </button>
-            </div>
+      <section style="border: 1px solid #ccc; padding: 20px; margin-bottom: 20px;">
+        <h3>Encryption Settings</h3>
+        <p>Master Key is required for <strong>CRYPT-MAX</strong> mode.</p>
+        
+        <div v-if="!showSetup && hasMasterKey">
+          <p style="color: green;">✓ Master Key configured and active.</p>
+          <button @click="showSetup = true">Change Key</button>
+        </div>
+        
+        <div v-else-if="!showSetup">
+          <p style="color: red;">⚠ No Master Key configured.</p>
+          <button @click="showSetup = true">Setup Master Key</button>
         </div>
 
-        <div class="col-span-2 space-y-6">
-            <div
-                class="bg-white border border-[#E5E1DD] rounded-2xl p-8 shadow-sm"
-            >
-                <h3 class="text-lg font-bold mb-6">Account Settings</h3>
-                <div class="space-y-6">
-                    <div class="grid grid-cols-2 gap-6">
-                        <div class="space-y-2">
-                            <label
-                                class="text-xs font-bold uppercase tracking-wider text-[#999]"
-                                >Full Name</label
-                            >
-                            <input
-                                type="text"
-                                v-model="user.name"
-                                class="w-full px-4 py-2.5 bg-white border border-[#E5E1DD] rounded-lg text-sm focus:outline-none focus:border-black"
-                            />
-                        </div>
-                        <div class="space-y-2">
-                            <label
-                                class="text-xs font-bold uppercase tracking-wider text-[#999]"
-                                >Email Address</label
-                            >
-                            <input
-                                type="email"
-                                v-model="user.email"
-                                class="w-full px-4 py-2.5 bg-white border border-[#E5E1DD] rounded-lg text-sm focus:outline-none focus:border-black"
-                            />
-                        </div>
-                    </div>
-                    <div class="pt-6 border-t border-[#F2F0ED]"></div>
-
-                    <div
-                        class="mt-8 pt-6 border-t border-[#F2F0ED] flex justify-end"
-                    >
-                        <button
-                            class="px-6 py-2.5 bg-black text-white rounded-lg text-sm font-bold shadow-lg shadow-black/10 hover:opacity-90 transition-opacity"
-                        >
-                            Save Changes
-                        </button>
-                    </div>
-                </div>
-
-                <div
-                    class="bg-black text-white border border-black rounded-2xl p-8 shadow-sm"
-                >
-                    <div class="flex items-start justify-between">
-                        <div>
-                            <h3 class="text-lg font-bold">
-                                Two-Factor Authentication
-                            </h3>
-                            <p class="text-white/60 text-sm mt-1 max-w-sm">
-                                Secure your account with an extra layer of
-                                protection during login.
-                            </p>
-                        </div>
-                        <span
-                            class="bg-green-400/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
-                            >Active</span
-                        >
-                    </div>
-                    <button
-                        class="mt-6 text-sm font-bold border-b border-white pb-1 hover:border-white/60 transition-colors"
-                    >
-                        Manage 2FA Settings
-                    </button>
-                </div>
-            </div>
+        <div v-if="showSetup" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+          <label>MASTER KEY</label><br />
+          <input type="text" v-model="masterKey" style="width: 100%; margin: 10px 0;" /><br />
+          <button @click="generateKey">Generate Random</button>
+          <button @click="downloadKey" :disabled="!masterKey">Download .txt</button>
+          <br /><br />
+          <button @click="saveKey" style="background: black; color: white;">Save & Activate</button>
+          <button @click="showSetup = false">Cancel</button>
         </div>
-    </div>
+      </section>
+
+      <button @click="logout" style="color: red;">
+        Sign Out
+      </button>
+    </main>
+  </div>
 </template>
