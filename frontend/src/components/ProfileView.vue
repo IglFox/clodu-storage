@@ -57,7 +57,6 @@ const saveKey = async () => {
     timestamp: Date.now() 
   });
 
-  sessionStorage.setItem('isVaultUnlocked', 'true');
   hasMasterKeyStatus.value = true;
   showSetup.value = false;
   successMsg.value = 'Vault Key Synchronized to Secure Storage';

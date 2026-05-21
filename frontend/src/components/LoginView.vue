@@ -2,11 +2,18 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { CryptoService } from '../utils/crypto';
+import { AuthService } from '../utils/authService';
 
 const router = useRouter();
 const step = ref('login'); // 'login', 'register'
 const authForm = ref({ email: '', password: '' });
 const errorMsg = ref('');
+const showSettings = ref(false);
+const customAuthApiUrl = ref(AuthService.getApiUrl());
+
+const saveSettings = () => {
+  AuthService.setApiUrl(customAuthApiUrl.value);
+};
 
 const showError = (msg) => {
   errorMsg.value = msg;
@@ -20,7 +27,6 @@ onMounted(async () => {
   if (!currentUserStr) {
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('masterKey');
-    sessionStorage.removeItem('isVaultUnlocked');
     step.value = 'register';
     return;
   }
@@ -36,35 +42,60 @@ onMounted(async () => {
     localStorage.removeItem('masterKey');
   }
 
-  const hasMasterKey = !!localStorage.getItem('masterKey');
-  const isVaultUnlocked = sessionStorage.getItem('isVaultUnlocked') === 'true';
-
   if (isLoggedIn) {
-    if (hasMasterKey && !isVaultUnlocked) {
-      step.value = 'vault_unlock';
-    } else {
-      router.push('/dashboard');
-    }
+    router.push('/dashboard');
   } else {
     step.value = 'login';
   }
 });
 
 const handleAuth = async () => {
+  if (!authForm.value.email.includes('@')) {
+    showError('Please enter a valid email address.');
+    return;
+  }
+  if (authForm.value.password.length < 6) {
+    showError('Password must be at least 6 characters long.');
+    return;
+  }
+
+  const microserviceUrl = customAuthApiUrl.value.trim();
+  if (microserviceUrl) {
+    try {
+      const resData = await AuthService.authenticate(
+        microserviceUrl,
+        step.value,
+        authForm.value.email,
+        authForm.value.password
+      );
+
+      localStorage.setItem('currentUser', JSON.stringify({
+        email: authForm.value.email,
+        password: authForm.value.password,
+        token: resData.token || 'microservice-simulated-jwt-token'
+      }));
+      localStorage.setItem('isLoggedIn', 'true');
+
+      // Sync master key scoped to user email
+      const idbKey = await CryptoService.getKey('master_key_' + authForm.value.email);
+      if (idbKey) {
+        localStorage.setItem('masterKey', idbKey.value);
+      } else {
+        localStorage.removeItem('masterKey');
+      }
+
+      router.push('/dashboard');
+      return;
+    } catch (err) {
+      showError(`Authorization Microservice Failed: ${err.message}`);
+      return;
+    }
+  }
+
   if (step.value === 'register') {
-    if (!authForm.value.email.includes('@')) {
-      showError('Please enter a valid email address.');
-      return;
-    }
-    if (authForm.value.password.length < 6) {
-      showError('Password must be at least 6 characters long.');
-      return;
-    }
-    
     // Mock Registration
     // Fresh Registration: clear any old vault data for this browser
     localStorage.removeItem('masterKey');
-    sessionStorage.removeItem('isVaultUnlocked');
     
     localStorage.setItem('currentUser', JSON.stringify({ email: authForm.value.email, password: authForm.value.password }));
     localStorage.setItem('isLoggedIn', 'true');
@@ -81,30 +112,17 @@ const handleAuth = async () => {
     if (user.email === authForm.value.email && user.password === authForm.value.password) {
       localStorage.setItem('isLoggedIn', 'true');
       
-      // If user has a master key inside secure enclave, load and request to unlock
+      // If user has a master key inside secure enclave, load it silently
       const idbKey = await CryptoService.getKey('master_key_' + user.email);
       if (idbKey) {
         localStorage.setItem('masterKey', idbKey.value);
-        step.value = 'vault_unlock';
       } else {
         localStorage.removeItem('masterKey');
-        router.push('/dashboard');
       }
+      router.push('/dashboard');
     } else {
       showError('Invalid email or password.');
     }
-  }
-};
-
-const masterKey = ref('');
-
-const unlockVault = () => {
-  const storedKey = localStorage.getItem('masterKey');
-  if (masterKey.value === storedKey) {
-    sessionStorage.setItem('isVaultUnlocked', 'true');
-    router.push('/dashboard');
-  } else {
-    showError('Access Denied: Invalid Master Key.');
   }
 };
 </script>
@@ -146,20 +164,37 @@ const unlockVault = () => {
             {{ step === 'login' ? "Don't have an account? Register" : "Already have an account? Login" }}
           </a>
         </p>
-      </div>
 
-      <!-- PHASE 2: VAULT UNLOCK (only if Master Key exists) -->
-      <div v-if="step === 'vault_unlock'">
-        <h3>Unlock Vault</h3>
-        <p>Your vault is encrypted. Enter Master Key to proceed.</p>
-        <form @submit.prevent="unlockVault">
+        <hr style="border: none; border-top: 1px dashed #ccc; margin: 25px 0 20px 0;" />
+        
+        <div style="text-align: center;">
+          <a href="#" @click.prevent="showSettings = !showSettings" style="font-size: 0.85rem; color: #555; text-decoration: underline;">
+            {{ showSettings ? 'Hide Microservice Settings' : 'Configure Authorization Microservice' }}
+          </a>
+        </div>
+
+        <div v-if="showSettings" style="margin-top: 15px; padding: 15px; border: 1px solid #ddd; background: #fafafa; border-radius: 4px; text-align: left;">
+          <h4 style="margin: 0 0 10px 0; font-size: 0.95rem; color: #222;">Authorization Microservice</h4>
+          <p style="font-size: 0.8rem; color: #666; margin: 0 0 12px 0; line-height: 1.4;">
+            Specify an external service URL (e.g., <code>https://api.myauth.com</code>) to authenticate users. If left blank, offline zero-knowledge virtual accounts are used.
+          </p>
           <div>
-            <label>MASTER KEY</label><br />
-            <input type="password" v-model="masterKey" required />
+            <label style="font-size: 0.75rem; font-weight: bold; color: #444; letter-spacing: 0.05em;">API ENDPOINT URL</label><br />
+            <input 
+              type="url" 
+              v-model="customAuthApiUrl" 
+              placeholder="e.g., http://localhost:8080 or https://auth.api" 
+              style="width: 100%; box-sizing: border-box; padding: 6px; font-family: monospace; font-size: 0.85rem; margin-top: 4px; border: 1px solid #ccc; border-radius: 3px;"
+              @input="saveSettings"
+            />
           </div>
-          <br />
-          <button type="submit">Unlock & Enter</button>
-        </form>
+          <div style="margin-top: 8px; font-size: 0.75rem; color: #22863a; font-weight: bold;" v-if="customAuthApiUrl.trim()">
+            ● Active Service Endpoint: Send POST `/register` & `/login` requests
+          </div>
+          <div style="margin-top: 8px; font-size: 0.75rem; color: #777;" v-else>
+            ○ Standalone Mode: Zero-Knowledge browser sandbox
+          </div>
+        </div>
       </div>
     </main>
   </div>

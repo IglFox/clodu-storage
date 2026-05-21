@@ -1,82 +1,54 @@
 version: "3.8"
 
 services:
-  auth:
-    build:
-      context: ./backend/auth
-      args:
-        SERVICE_NAME: auth
-    networks:
-      - backend
-
-  gateway:
-    build: ./gateway
-    ports:
-      - "8000:8000"
-    environment:
-      AUTH_URL: "http://auth:8081"
-      STORAGE_URL: "http://storage:8002"
-      ANALYSIS_URL: "http://analysis:8003"
-      ENCRYPT_URL: "http://encrypt:8004"
-    networks:
-      - backend
-    depends_on:
-      - auth
-      - storage
-
   ui:
     build: ./frontend
     ports:
       - "5173:5173"
     networks:
       - backend
-    depends_on:
-      - gateway
 
-  storage:
-    build: ./backend/storage
-    ports:
-      - "8002:8002"
+  postgres:
+    image: postgres:17-alpine
+    container_name: clodu_postgres
     environment:
-      DATABASE_URL: "postgresql+asyncpg://user:password@db:5432/filestorage"
-      ELASTICSEARCH_URL: "http://elasticsearch:9200"
-      STORAGE_DIR: "/data/files"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: clodu
+    ports:
+      - "5432:5432"
     volumes:
-      - file_storage:/data/files
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - backend
-    depends_on:
-      - db
-      - elasticsearch
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
-  db:
-    image: postgres:15-alpine
+  storage:
+    build:
+      context: .
+      dockerfile: backend/Clodu.API/Dockerfile
+    container_name: clodu_backend
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: filestorage
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=clodu;Username=postgres;Password=postgres
+    ports:
+      - "5019:8080"
+      - "5018:8081" # если нужен HTTPS
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - backend
+    restart: unless-stopped
 
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    networks:
-      - backend
-    volumes:
-      - esdata:/usr/share/elasticsearch/data
+volumes:
+  postgres_data:
 
 networks:
   backend:
     driver: bridge
-
-volumes:
-  file_storage:
-  pgdata:
-  esdata:

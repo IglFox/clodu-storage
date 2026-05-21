@@ -60,24 +60,14 @@ router.beforeEach(async (to, from, next) => {
     localStorage.removeItem('masterKey');
   }
 
-  const isVaultUnlocked = sessionStorage.getItem('isVaultUnlocked') === 'true';
-
   if (to.meta.requiresAuth) {
     if (!isLoggedIn || !currentUser) {
-      next({ name: 'login' });
-    } else if (hasMasterKey && !isVaultUnlocked) {
-      // If we have a key but it's not "unlocked" in this session, force login/unlock
       next({ name: 'login' });
     } else {
       next();
     }
   } else if (to.meta.guest && isLoggedIn && currentUser) {
-    // If guest page (login) and already logged in, check if vault needs unlocking
-    if (hasMasterKey && !isVaultUnlocked) {
-      next(); // Stay on login to unlock
-    } else {
-      next({ name: 'dashboard' });
-    }
+    next({ name: 'dashboard' });
   } else {
     next();
   }
