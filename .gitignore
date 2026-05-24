@@ -38,3 +38,8 @@ coverage/
 *.log
 .env*
 !.env.example
+backend/Clodu.API/obj/
+backend/Clodu.API/bin/
+
+# gemini
+docs/

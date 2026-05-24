@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     JWT_SECRET_KEY: str
@@ -8,7 +8,6 @@ class Settings(BaseSettings):
     ANALYSIS_SERVICE_URL: str
     ENCRYPT_SERVICE_URL: str
 
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(env_file=".env")
 
 settings = Settings()

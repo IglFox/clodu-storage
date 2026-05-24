@@ -1,13 +1,4 @@
-version: "3.8"
-
 services:
-  ui:
-    build: ./frontend
-    ports:
-      - "5173:5173"
-    networks:
-      - backend
-
   postgres:
     image: postgres:17-alpine
     container_name: clodu_postgres
@@ -19,32 +10,41 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - backend
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    networks:
+      - backend
 
   storage:
     build:
       context: .
       dockerfile: backend/Clodu.API/Dockerfile
-    container_name: clodu_backend
+    container_name: clodu_storage
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=clodu;Username=postgres;Password=postgres
+      - ConnectionStrings__Postgres=Host=postgres;Port=5432;Database=clodu;Username=postgres;Password=postgres
     ports:
       - "5019:8080"
-      - "5018:8081" # если нужен HTTPS
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - backend
     restart: unless-stopped
+
+  ui:
+    build: ./frontend
+    container_name: clodu_ui
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_AUTH_API_URL: http://localhost:5019 # или http://storage:8080, если через gateway
+    networks:
+      - backend
 
 volumes:
   postgres_data:
