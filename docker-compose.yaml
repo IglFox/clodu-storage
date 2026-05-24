@@ -1,38 +1,53 @@
 version: "3.8"
 
 services:
-  auth:
-    build:
-      context: ./backend/auth
-      args:
-        SERVICE_NAME: auth
-    ports:
-      - "8081:8081"
-    networks:
-      - backend
-
-  gateway:
-    build: ./gateway
-    ports:
-      - "8000:8000"
-    environment:
-      AUTH_URL: "http://auth:8081"
-      STORAGE_URL: "http://storage:8002"
-      ANALYSIS_URL: "http://analysis:8003"
-      ENCRYPT_URL: "http://encrypt:8004"
-    networks:
-      - backend
-    depends_on:
-      - auth
-
   ui:
     build: ./frontend
     ports:
-      - "5173:3000"
+      - "5173:5173"
     networks:
       - backend
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: clodu_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: clodu
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  storage:
+    build:
+      context: .
+      dockerfile: backend/Clodu.API/Dockerfile
+    container_name: clodu_backend
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=clodu;Username=postgres;Password=postgres
+    ports:
+      - "5019:8080"
+      - "5018:8081" # если нужен HTTPS
     depends_on:
-      - gateway
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
 
 networks:
   backend:
