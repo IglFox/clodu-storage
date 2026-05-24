@@ -27,8 +27,6 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__Postgres=Host=postgres;Port=5432;Database=clodu;Username=postgres;Password=postgres
-    ports:
-      - "5019:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -37,12 +35,11 @@ services:
     restart: unless-stopped
 
   ui:
-    build: ./frontend
+    build:
+      context: ./frontend
     container_name: clodu_ui
     ports:
-      - "5173:5173"
-    environment:
-      VITE_AUTH_API_URL: http://localhost:5019 # или http://storage:8080, если через gateway
+      - "80:80"
     networks:
       - backend
 
