@@ -24,7 +24,7 @@ SERVICES = {
 }
 
 # Фиксированный токен (для заглушки)
-VALID_TOKEN = "hardcoded-token-123"
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 
 
 def verify_token(authorization: str = Header(...)):
@@ -32,7 +32,7 @@ def verify_token(authorization: str = Header(...)):
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid token format")
     token = authorization.split(" ")[1]
-    if token != VALID_TOKEN:
+    if token != JWT_SECRET_KEY:
         raise HTTPException(status_code=401, detail="Invalid token")
     return token
 
