@@ -5,7 +5,6 @@ using System.Text;
 using Clodu.API.Data;
 using Clodu.API.Data.Repositories;
 using Clodu.API.Services;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // ==================== СЕРВИСЫ ====================
@@ -61,20 +60,20 @@ app.MapControllers();
 
 // ==================== ПРОВЕРКА БД ====================
 
-using (var scope = app.Services.CreateScope())
-{
-    try
-    {
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
-        Console.WriteLine("✅ PostgreSQL подключена и готова к работе!");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"❌ Ошибка подключения к PostgreSQL: {ex.Message}");
-        Console.WriteLine("Убедитесь, что PostgreSQL запущен и настройки в appsettings.json верны.");
-    }
-}
+// using (var scope = app.Services.CreateScope())
+// {
+//     try
+//     {
+//         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+//         await db.Database.EnsureCreatedAsync();
+//         Console.WriteLine("✅ PostgreSQL подключена и готова к работе!");
+//     }
+//     catch (Exception ex)
+//     {
+//         Console.WriteLine($"❌ Ошибка подключения к PostgreSQL: {ex.Message}");
+//         Console.WriteLine("Убедитесь, что PostgreSQL запущен и настройки в appsettings.json верны.");
+//     }
+// }
 
 // ==================== ЗАПУСК ====================
 

@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
     public DbSet<User> Users { get; set; }
     public DbSet<UserSession> UserSessions { get; set; }
     public DbSet<FileData> Files { get; set; }
+    public DbSet<FileKey> FileKeys { get; set; }  // 👈 ДОБАВЛЕНО
     public DbSet<Folder> Folders { get; set; }
     public DbSet<FolderFile> FolderFiles { get; set; }
     public DbSet<FolderFolder> FolderFolders { get; set; }
@@ -73,6 +74,16 @@ public class AppDbContext : DbContext
                 .WithMany(u => u.Files)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+        
+        // ==================== FileKeys ====================
+        modelBuilder.Entity<FileKey>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.FileId).IsUnique();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.EncryptedKey).HasColumnType("bytea");
+            entity.Property(e => e.IV).HasColumnType("bytea");
         });
         
         // ==================== Folders ====================
