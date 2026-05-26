@@ -81,6 +81,15 @@ export const api = {
         return handleResponse(response, startTime);
     },
 
+    delete: async (endpoint) => {
+        const startTime = Date.now();
+        const response = await fetch(`${BASE_URL}${endpoint}`, {
+            method: "DELETE",
+            headers: getHeaders(),
+        });
+        return handleResponse(response, startTime);
+    },
+
     setToken: (token) => {
         localStorage.setItem("dcs_auth_token", token);
     },

@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useFileStore } from '../stores/files';
 import { formatSize } from '../utils/parser';
 import { 
@@ -11,11 +11,17 @@ import {
   FileCode, 
   File, 
   Trash2, 
-  MoreHorizontal
+  MoreHorizontal,
+  ArrowLeft
 } from '@lucide/vue';
 
 const fileStore = useFileStore();
 const activeMenu = ref(null);
+
+onMounted(() => {
+  fileStore.fetchFiles();
+  document.addEventListener('click', () => { activeMenu.value = null; });
+});
 
 function handleItemClick(item) {
   if (item.type === 'folder') {
@@ -35,6 +41,16 @@ function getIcon(category) {
 
 <template>
   <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+    <!-- BACK BUTTON -->
+    <button 
+      v-if="fileStore.currentFolderId !== 'root'"
+      @click="fileStore.navigateUp()"
+      class="col-span-full mb-2 flex items-center gap-2 text-[12px] text-text-secondary hover:text-text-primary transition-colors"
+    >
+      <ArrowLeft class="w-4 h-4" />
+      Back
+    </button>
+
     <!-- FOLDERS -->
     <div 
       v-for="item in fileStore.currentItems.filter(i => i.type === 'folder')"
@@ -60,7 +76,7 @@ function getIcon(category) {
     <div 
       v-for="item in fileStore.currentItems.filter(i => i.type === 'file')"
       :key="item.id"
-      class="group"
+      class="group relative"
     >
       <div class="aspect-square bg-surface border border-border rounded-lg flex items-center justify-center mb-3 relative cursor-pointer hover:bg-accent-bg transition-colors">
         <component :is="getIcon(item.category)" class="w-8 h-8 text-text-secondary opacity-40" />
@@ -70,9 +86,22 @@ function getIcon(category) {
           <p class="text-[12px] font-medium text-text-primary truncate">{{ item.name }}</p>
           <p class="text-[10px] text-text-secondary">{{ item.formattedSize }}</p>
         </div>
-        <button class="opacity-0 group-hover:opacity-100 transition-opacity">
+        <button 
+          @click.stop="activeMenu = activeMenu === item.id ? null : item.id"
+          class="transition-opacity"
+          :class="activeMenu === item.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+        >
           <MoreHorizontal class="w-3.5 h-3.5 text-text-secondary" />
         </button>
+      </div>
+
+      <!-- Pop-up Menu -->
+      <div 
+        v-if="activeMenu === item.id"
+        class="absolute right-0 top-12 w-32 bg-surface border border-border rounded-lg shadow-xl z-10 py-1"
+      >
+        <button @click="fileStore.downloadFile(item); activeMenu = null" class="w-full text-left px-4 py-2 text-[12px] hover:bg-canvas">Скачать</button>
+        <button @click="fileStore.deleteFile(item.id); activeMenu = null" class="w-full text-left px-4 py-2 text-[12px] text-red-500 hover:bg-canvas">Удалить</button>
       </div>
     </div>
 

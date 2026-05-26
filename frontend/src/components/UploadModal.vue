@@ -50,9 +50,9 @@ function handleUpload() {
     const key = deriveKey(passphrase.value);
     const encryptedResult = encryptData(selectedFile.value.name, key.raw);
     
-    fileStore.uploadFile(selectedFile.value, true, encryptedResult);
+    fileStore.uploadFile(selectedFile.value);
   } else {
-    fileStore.uploadFile(selectedFile.value, false);
+    fileStore.uploadFile(selectedFile.value);
   }
   
   // Reset fields & close
