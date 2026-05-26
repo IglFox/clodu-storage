@@ -14,10 +14,14 @@ const routes = [
     meta: { guest: true }
   },
   {
-    path: '/',
+    path: '/dashboard',
     name: 'dashboard',
     component: Dashboard,
     meta: { auth: true }
+  },
+  {
+    path: '/',
+    redirect: '/dashboard'
   },
   {
     path: '/safe',
@@ -34,7 +38,7 @@ const routes = [
   // Redirect any other route to dashboard
   {
     path: '/:pathMatch(.*)*',
-    redirect: '/'
+    redirect: '/dashboard'
   }
 ];
 

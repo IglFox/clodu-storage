@@ -52,7 +52,10 @@ public class FilesController : ControllerBase
         var path = file.ShardLocationsList.FirstOrDefault()?.Path;
 
         if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path))
+        {
+            Console.WriteLine($"[ERROR] File {id} not found on disk at: {path}");
             return NotFound("File not found on disk");
+        }
 
         var bytes = await System.IO.File.ReadAllBytesAsync(path);
         return File(bytes, file.Type, file.Name);
