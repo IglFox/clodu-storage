@@ -7,4 +7,8 @@ public class ShardLocation
     public bool IsParity { get; set; }
     public long SizeBytes { get; set; }
     public string? NodeId { get; set; }
+    
+    // Новые поля для шифрования
+    public string? EncryptedKey { get; set; }
+    public string? IV { get; set; }
 }

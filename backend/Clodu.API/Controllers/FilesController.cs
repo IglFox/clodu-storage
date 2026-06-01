@@ -10,10 +10,12 @@ namespace Clodu.API.Controllers;
 public class FilesController : ControllerBase
 {
     private readonly IFileService _fileService;
+    private readonly ILogger<FilesController> _logger;
 
-    public FilesController(IFileService fileService)
+    public FilesController(IFileService fileService, ILogger<FilesController> logger)
     {
         _fileService = fileService;
+        _logger = logger;
     }
 
     [HttpPost("upload")]
@@ -39,26 +41,31 @@ public class FilesController : ControllerBase
         });
     }
 
-[HttpGet("{id}")]
-public async Task<IActionResult> Download(int id)
-{
-    var userId = GetCurrentUserId();
-    
-    try
+    [HttpGet("{id}")]
+    public async Task<IActionResult> Download(int id)
     {
-        var encryptedBytes = await _fileService.DownloadFileAsync(id, userId);
-        var file = await _fileService.GetFileAsync(id, userId);
+        var userId = GetCurrentUserId();
         
-        if (file == null)
+        try
+        {
+            var decryptedBytes = await _fileService.DownloadFileAsync(id, userId);
+            var file = await _fileService.GetFileAsync(id, userId);
+            
+            if (file == null)
+                return NotFound();
+            
+            return File(decryptedBytes, file.Type, file.Name);
+        }
+        catch (FileNotFoundException)
+        {
             return NotFound();
-        
-        return File(encryptedBytes, "application/octet-stream", $"encrypted_{file.Name}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error downloading file {FileId}", id);
+            return StatusCode(500, new { error = ex.Message });
+        }
     }
-    catch (FileNotFoundException)
-    {
-        return NotFound();
-    }
-}
 
     [HttpGet]
     public async Task<IActionResult> GetUserFiles()
@@ -83,5 +90,4 @@ public async Task<IActionResult> Download(int id)
             throw new UnauthorizedAccessException();
         return int.Parse(claim);
     }
-    
 }
