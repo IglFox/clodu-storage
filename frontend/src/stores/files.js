@@ -75,6 +75,16 @@ export const useFileStore = defineStore('files', () => {
     pathHistory.value = newPath;
   }
 
+  // Navigate to parent folder
+  function navigateUp() {
+    if (currentFolderId.value === 'root') return;
+    const currentFolder = items.value.find(i => i.id === currentFolderId.value);
+    if (!currentFolder) return navigateTo('root');
+    
+    const parentId = currentFolder.parentId || 'root';
+    navigateTo(parentId);
+  }
+
   // Create folder inside current directory
   function createFolder(name) {
     if (!name) return false;
@@ -107,17 +117,79 @@ export const useFileStore = defineStore('files', () => {
     return true;
   }
 
+  // Fetch all files
+  async function fetchFiles() {
+    try {
+      const response = await api.get('/api/Files');
+      const data = response.data || response;
+      if (Array.isArray(data)) {
+        items.value = data.map(file => ({
+          id: file.id.toString(),
+          name: file.name,
+          type: 'file',
+          parentId: 'root',
+          category: 'File',
+          size: file.sizeBytes,
+          formattedSize: (file.sizeBytes / 1024).toFixed(2) + ' KB'
+        }));
+      }
+    } catch (e) {
+      console.error('Failed to fetch files:', e);
+    }
+  }
+
   // Upload file
   async function uploadFile(file) {
     const formData = new FormData();
     formData.append('file', file);
     
     try {
-      await api.post('/api/Files/upload', formData, true);
+      await api.post('/api/Files/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      await fetchFiles(); // Refresh list after upload
       return true;
     } catch (e) {
       console.error(e);
       return false;
+    }
+  }
+
+  // Delete file
+  async function deleteFile(fileId) {
+    try {
+      await api.delete(`/api/Files/${fileId}`);
+      await fetchFiles();
+      return true;
+    } catch (e) {
+      console.error('Failed to delete file:', e);
+      return false;
+    }
+  }
+
+  // Download file
+  async function downloadFile(file) {
+    try {
+      const token = localStorage.getItem("dcs_auth_token");
+      const response = await fetch(`/api/Files/${file.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Failed to download file:', e);
     }
   }
 
@@ -135,8 +207,11 @@ export const useFileStore = defineStore('files', () => {
     searchResults,
     totalStorageUsed,
     navigateTo,
+    navigateUp,
     createFolder,
-    deleteItem,
-    uploadFile
+    deleteFile,
+    uploadFile,
+    fetchFiles,
+    downloadFile
   };
 });

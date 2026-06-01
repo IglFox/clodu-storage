@@ -17,15 +17,19 @@ async function handleSubmit() {
     if (isLoginMode.value) {
         success = await authStore.login(email.value, password.value);
     } else {
-        success = await authStore.register(
+        const registered = await authStore.register(
             name.value,
             email.value,
             password.value,
         );
+        if (registered) {
+            // После успешной регистрации сразу логинимся
+            success = await authStore.login(email.value, password.value);
+        }
     }
 
     if (success && authStore.currentUser) {
-        router.push("/");
+        router.push("/dashboard");
     }
 }
 </script>

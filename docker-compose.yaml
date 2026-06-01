@@ -32,6 +32,27 @@ services:
         condition: service_healthy
     networks:
       - backend
+    volumes:
+      - storage_data:/app/Storage
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: ./gateway
+    container_name: clodu_gateway
+    environment:
+      - AUTH_SERVICE_URL=http://clodu_storage:8080
+      - ANALYSIS_SERVICE_URL=http://localhost:8003
+      - ENCRYPT_SERVICE_URL=http://localhost:8004
+      - STORAGE_SERVICE_URL=http://clodu_storage:8080
+      - JWT_SECRET_KEY=clodu-super-secret-key-2024-very-long-and-secure-32bytes
+      - JWT_ALGORITHM=HS256
+    depends_on:
+      - storage
+    ports:
+      - "8000:8000"
+    networks:
+      - backend
     restart: unless-stopped
 
   ui:
@@ -42,9 +63,12 @@ services:
       - "80:80"
     networks:
       - backend
+    depends_on:
+      - gateway
 
 volumes:
   postgres_data:
+  storage_data:
 
 networks:
   backend:

@@ -46,6 +46,8 @@ public class FileService : IFileService
     var physicalPath = Path.Combine(storageDir, $"{userId}_{saved.Id}_0.bin");
     await File.WriteAllBytesAsync(physicalPath, bytes);
     
+    _logger.LogInformation("File {FileName} saved to {Path}", fileName, physicalPath);
+    
     // 3. Обновляем ShardLocations
     saved.ShardLocationsList = new List<ShardLocation>
     {

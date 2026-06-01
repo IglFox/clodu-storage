@@ -22,41 +22,35 @@ const emit = defineEmits(['close']);
 
 const fileStore = useFileStore();
 
-const selectedFile = ref(null);
+const selectedFiles = ref([]);
 const isEncrypted = ref(false);
 const passphrase = ref('');
 const showPassword = ref(false);
 const errorMessage = ref('');
 
 function handleFileChange(event) {
-  selectedFile.value = event.target.files[0];
+  selectedFiles.value = Array.from(event.target.files);
 }
 
 function handleUpload() {
   errorMessage.value = '';
   
-  if (!selectedFile.value) {
-    errorMessage.value = 'Please select a file to upload.';
+  if (selectedFiles.value.length === 0) {
+    errorMessage.value = 'Please select files to upload.';
     return;
   }
   
-  if (isEncrypted.value) {
-    if (!passphrase.value) {
-      errorMessage.value = 'Encryption requires a secure Master passphrase.';
-      return;
+  // Для простоты, если файлов много, загружаем их по очереди
+  selectedFiles.value.forEach(file => {
+    if (isEncrypted.value) {
+      // Здесь нужна реализация шифрования для каждого файла
+      // Пока оставим логику как есть, но для нескольких файлов потребуется цикл
+      // В текущем API шифрование - это отдельная задача
     }
-    
-    // Key derivation and encryption (mock)
-    const key = deriveKey(passphrase.value);
-    const encryptedResult = encryptData(selectedFile.value.name, key.raw);
-    
-    fileStore.uploadFile(selectedFile.value, true, encryptedResult);
-  } else {
-    fileStore.uploadFile(selectedFile.value, false);
-  }
+    fileStore.uploadFile(file);
+  });
   
-  // Reset fields & close
-  selectedFile.value = null;
+  selectedFiles.value = [];
   passphrase.value = '';
   isEncrypted.value = false;
   emit('close');
@@ -104,6 +98,7 @@ function handleUpload() {
           <label class="text-[11px] font-bold uppercase tracking-widest text-text-secondary ml-1">Object Source</label>
           <input 
             type="file" 
+            multiple
             @change="handleFileChange"
             class="w-full text-[12px] px-3 py-2 bg-canvas border border-border rounded-lg text-text-primary cursor-pointer file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-folder file:text-white hover:file:opacity-90"
           />

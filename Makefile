@@ -19,3 +19,13 @@ install:
 install-wsl: # установка подсистемы linux для windows
     wsl --install \
     wsl --install -d Ubuntu
+
+# при ошибках с миграцией
+migrate:
+	dotnet tool install --global dotnet-ef
+	dotnet remove package Microsoft.AspNetCore.OpenApi
+	dotnet add package Microsoft.AspNetCore.OpenApi
+	dotnet clean
+	dotnet restore
+	dotnet build
+	dotnet ef database update
