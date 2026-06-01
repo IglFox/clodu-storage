@@ -39,27 +39,26 @@ public class FilesController : ControllerBase
         });
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> Download(int id)
+[HttpGet("{id}")]
+public async Task<IActionResult> Download(int id)
+{
+    var userId = GetCurrentUserId();
+    
+    try
     {
-        var userId = GetCurrentUserId();
+        var encryptedBytes = await _fileService.DownloadFileAsync(id, userId);
         var file = await _fileService.GetFileAsync(id, userId);
-
+        
         if (file == null)
             return NotFound();
-
-        // 👇 ИСПОЛЬЗУЙ ShardLocationsList (автоматическая десериализация)
-        var path = file.ShardLocationsList.FirstOrDefault()?.Path;
-
-        if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path))
-        {
-            Console.WriteLine($"[ERROR] File {id} not found on disk at: {path}");
-            return NotFound("File not found on disk");
-        }
-
-        var bytes = await System.IO.File.ReadAllBytesAsync(path);
-        return File(bytes, file.Type, file.Name);
+        
+        return File(encryptedBytes, "application/octet-stream", $"encrypted_{file.Name}");
     }
+    catch (FileNotFoundException)
+    {
+        return NotFound();
+    }
+}
 
     [HttpGet]
     public async Task<IActionResult> GetUserFiles()
@@ -84,4 +83,5 @@ public class FilesController : ControllerBase
             throw new UnauthorizedAccessException();
         return int.Parse(claim);
     }
+    
 }

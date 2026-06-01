@@ -17,22 +17,28 @@ public class CryptoService : ICryptoService
     }
 
     // Вспомогательный метод: получает мастер-ключ из безопасного места
-    private byte[] GetMasterKey()
+private byte[] GetMasterKey()
+{
+    var masterKeyBase64 = _configuration["Encryption:MasterKey"];
+    _logger.LogInformation($"MasterKey from config: {(string.IsNullOrEmpty(masterKeyBase64) ? "NOT FOUND" : "FOUND")}");
+    
+    if (string.IsNullOrEmpty(masterKeyBase64))
     {
-        // ВАЖНО: Для разработки можно временно захардкодить, 
-        // но для продакшена используй переменные окружения или Azure Key Vault.
-        // Пример из appsettings.json (небезопасно для прода):
-        var masterKeyBase64 = _configuration["Encryption:MasterKey"];
-        
-        if (string.IsNullOrEmpty(masterKeyBase64))
-        {
-            // Генерируем фейковый ключ, если его нет. В реальном проекте лучше кидать ошибку.
-            _logger.LogWarning("Мастер-ключ не найден! Использую временный фиксированный ключ для разработки.");
-            return Convert.FromBase64String("bXlTdXBlclNlY3JldEtleVRoYXRJc1RlcnRpYmx5TmV3MTIzIQ==");
-        }
-        
-        return Convert.FromBase64String(masterKeyBase64);
+        _logger.LogError("Мастер-ключ не найден в конфигурации!");
+        throw new InvalidOperationException("Master key not configured");
     }
+    
+    var key = Convert.FromBase64String(masterKeyBase64);
+    _logger.LogInformation($"Master key size: {key.Length} bytes");
+    
+    if (key.Length != 32)
+    {
+        _logger.LogError($"Мастер-ключ имеет неверный размер: {key.Length} байт (должен быть 32)");
+        throw new InvalidOperationException("Master key must be 32 bytes");
+    }
+    
+    return key;
+}
 
     // 1. Генерация ключа для ФАЙЛА
     public (byte[] Key, byte[] Iv) GenerateAesKey()
