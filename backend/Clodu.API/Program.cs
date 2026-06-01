@@ -53,7 +53,7 @@ builder.Services.AddScoped<IFileRepository, FileRepository>();
 builder.Services.AddScoped<ISessionRepository, SessionRepository>();
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<IFileService, FileService>();
-
+builder.Services.AddScoped<ICryptoService, CryptoService>();
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
